@@ -18,16 +18,13 @@ class CreateInstructorsTable extends Migration
             $table->string('name'); 
             $table->string('email')->unique(); 
             $table->string('phone')->nullable(); 
-            $table->enum('academic_rank', ['degree', 'masters', 'phd', 'professor', 'other']);
             $table->unsignedBigInteger('role_id');
-            $table->unsignedBigInteger('professional_experience_id')->nullable(); 
             $table->boolean('is_available')->default(true); 
             $table->boolean('is_studying')->default(false); 
             $table->boolean('is_approved')->default(false); 
             $table->timestamps(); 
 
-            $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
-            $table->foreign('professional_experience_id')->references('id')->on('professional_experiences')->onDelete('set null');
+            $table->foreign('role_id')->references('id')->on('instructor_roles')->onDelete('cascade');
         });
     }
 

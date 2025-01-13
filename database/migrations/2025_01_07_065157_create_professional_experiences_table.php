@@ -22,7 +22,7 @@ class CreateProfessionalExperiencesTable extends Migration
             $table->foreign('field_id')->references('id')->on('fields')->onDelete('cascade');
         });
 
-       
+
     }
 
     /**
