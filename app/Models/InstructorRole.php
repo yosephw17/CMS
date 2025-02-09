@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class InstructorRole extends Model
 {
     use HasFactory;
-    protected $fillable = ['name','load'];
-    
+
+    protected $fillable =['name','load'];
+  
+    public function instructors(){
+       return $this->hasMany(Instructor::class) ;
+    }
+
 }

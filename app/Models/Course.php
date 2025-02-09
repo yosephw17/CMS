@@ -8,8 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 class Course extends Model
 {
     use HasFactory;
-    public function yearSemesterCourses()
+   
+
+    protected $fillable = [
+        'name',
+        'course_code',
+        'cp',
+        'lecture_cp',
+        'lab_cp',
+    ];
+    public function fields()
+    {
+        return $this->belongsToMany(Field::class);  
+    }
+   public function yearSemesterCourses()
     {
         return $this->hasMany(YearSemesterCourse::class);
-    }
+   }
 }
