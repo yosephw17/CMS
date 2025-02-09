@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Course extends Model
 {
     use HasFactory;
+   
+
     protected $fillable = [
         'name',
         'course_code',
@@ -19,4 +21,8 @@ class Course extends Model
     {
         return $this->belongsToMany(Field::class);  
     }
+   public function yearSemesterCourses()
+    {
+        return $this->hasMany(YearSemesterCourse::class);
+   }
 }
