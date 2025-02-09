@@ -2,6 +2,14 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\InstructorController;
+
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\FieldController;
+use App\Http\Controllers\ProfessionalExperienceController;
+use App\Http\Controllers\ResearchController;
+use App\Http\Controllers\AssignmentController;
+
 
 /*
 |----------------------------------------------------------------------
@@ -24,4 +32,13 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::apiResource('instructors', InstructorController::class);
+    Route::apiResource('courses', CourseController::class);
+    Route::apiResource('fields', FieldController::class);
+    Route::apiResource('professional-experiences', ProfessionalExperienceController::class);
+    Route::resource('researches', ResearchController::class);
+    Route::resource('assignments', AssignmentController::class);
+    Route::post('/assignments/{id}/assign-courses', [AssignmentController::class, 'assignCourses']);
+
+
 });
