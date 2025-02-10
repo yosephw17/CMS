@@ -12,4 +12,13 @@ class Result extends Model
 
     'point','is_assigned','instructor_id','course_id','assignment_id',
     ];
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function instructor()
+    {
+        return $this->belongsTo(Instructor::class);
+    }
 }

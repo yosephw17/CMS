@@ -13,4 +13,8 @@ class Assignment extends Model
         'semester',
 
     ];
+    public function results()
+    {
+        return $this->hasMany(Result::class);
+    }
 }

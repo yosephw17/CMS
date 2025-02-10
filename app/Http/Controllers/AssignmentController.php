@@ -17,33 +17,49 @@ class AssignmentController extends Controller
 
     public function index()
     {
-        $assignments = Assignment::orderBy('year')->orderBy('semester')->get();
-        return Assignment::orderBy('year')->orderBy('semester')->get();
+        $assignments = Assignment::with(['results.instructor', 'results.course'])->get();
+        return response()->json($assignments);
     }
-
+    
     public function store(Request $request)
     {
         $request->validate([
             'year' => 'required|string',
             'semester' => 'required|integer',
         ]);
-
+    
+        $exists = Assignment::where('year', $request->year)
+                            ->where('semester', $request->semester)
+                            ->exists();
+    
+        if ($exists) {
+            return response()->json(['error' => 'The selected year and semester already exist.'], 400);
+        }
+    
         $assignment = Assignment::create([
             'year' => $request->year,
             'semester' => $request->semester,
         ]);
-
-        // Call the service and pass the assignment ID
-        // Call the service and get the assigned results
-    $assignedResults = $this->courseAssignmentService->assignCourses($assignment->id);
-
-    // Return the assignment details along with assigned results
-    return response()->json([
-        'assignment' => $assignment,
-        'assigned_results' => $assignedResults
-    ], 201);
+    
+        return response()->json(['success' => 'Assignment created successfully.', 'assignment' => $assignment], 201);
     }
+    
+    
+    
+    public function assignCourses($id)
+    {
+        // Ensure the assignment exists
+        $assignment = Assignment::findOrFail($id);
 
+        // Call the service and get the assigned results
+        $assignedResults = $this->courseAssignmentService->assignCourses($assignment->id);
+
+        // Return the assignment details along with assigned results
+        return response()->json([
+            'assignment' => $assignment,
+            'assigned_results' => $assignedResults
+        ], 201);
+    }
     public function update(Request $request, $id)
     {
         $assignment = Assignment::findOrFail($id);

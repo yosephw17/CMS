@@ -78,6 +78,6 @@ class FieldController extends Controller
     {
         $field->delete();
 
-        return redirect()->route('fields.index')->with('success', 'Field deleted successfully.');
+        return response()->json(null, 204);
     }
 }
