@@ -39,7 +39,7 @@ class Instructor extends Model
 
     public function researches()
     {
-        return $this->hasMany(Research::class); 
+        return $this->hasMany(Research::class);
     }
 
 }

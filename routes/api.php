@@ -1,6 +1,8 @@
 <?php
+
 use App\Http\Controllers\ChoiceController;
 use App\Http\Controllers\CourseController;
+
 use App\Http\Controllers\SemesterController;
 use App\Http\Controllers\YearController;
 use Illuminate\Support\Facades\Route;
