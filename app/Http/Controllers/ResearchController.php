@@ -12,10 +12,9 @@ class ResearchController extends Controller
     // Display a listing of the researches
     public function index()
     {
-        $researches = Research::with('field', 'instructor')->get();
         return Research::with('field', 'instructor')->get();
     }
-
+    
     // Show the form for creating a new research
     public function create()
     {
