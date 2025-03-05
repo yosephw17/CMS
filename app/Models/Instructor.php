@@ -41,5 +41,9 @@ class Instructor extends Model
     {
         return $this->hasMany(Research::class);
     }
+    public function students()
+{
+    return $this->belongsTo(Instructor::class, 'assigned_mentor_id');}
+
 
 }

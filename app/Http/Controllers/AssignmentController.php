@@ -19,7 +19,10 @@ class AssignmentController extends Controller
     {
         $assignments = Assignment::with(['results.instructor', 'results.course'])->get();
         return response()->json($assignments);
+
+    }
     public function latest()
+    
     {
         // Fetch the latest assignment using 'created_at' timestamp
         $latestAssignment = Assignment::latest()->first(); // or you can use orderBy('created_at', 'desc')
