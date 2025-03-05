@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 
 class Instructor extends Model
 {
-    use HasFactory;
+    use HasFactory ,Notifiable;
 
     protected $fillable = [
         'name',
@@ -40,6 +41,11 @@ class Instructor extends Model
     public function researches()
     {
         return $this->hasMany(Research::class);
+    }
+
+    public function results()
+    {
+        return $this->hasMany(Result::class);
     }
 
 }
