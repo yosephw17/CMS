@@ -19,6 +19,8 @@ class AssignmentController extends Controller
     {
         $assignments = Assignment::with(['results.instructor', 'results.course'])->get();
         return response()->json($assignments);
+    }
+
     public function latest()
     {
         // Fetch the latest assignment using 'created_at' timestamp
@@ -30,9 +32,6 @@ class AssignmentController extends Controller
 
         return response()->json($latestAssignment);
     }
-
-
-    
 
     public function store(Request $request)
     {
@@ -57,8 +56,6 @@ class AssignmentController extends Controller
         return response()->json(['success' => 'Assignment created successfully.', 'assignment' => $assignment], 201);
     }
     
-    
-    
     public function assignCourses($id)
     {
         // Ensure the assignment exists
@@ -73,6 +70,7 @@ class AssignmentController extends Controller
             'assigned_results' => $assignedResults
         ], 201);
     }
+
     public function update(Request $request, $id)
     {
         $assignment = Assignment::findOrFail($id);
