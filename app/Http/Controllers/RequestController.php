@@ -61,6 +61,7 @@ class RequestController extends Controller
         ]);
         return response()->json(['message' => 'Failed to send notification.', 'error' => $e->getMessage()], 500);
     }
+    
 }
 
 public function showChooseCoursesPage($instructorId, Request $request)

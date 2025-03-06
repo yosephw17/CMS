@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Assignment;
 use App\Models\Choice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log; 
 
 class ChoiceController extends Controller
 {
@@ -13,7 +14,16 @@ class ChoiceController extends Controller
      */
     public function index()
     {
-        //
+        $choices = Choice::all();
+        return response()->json(['choices' => $choices]);
+    }
+
+    public function fetchAssignmentChoice( $id) {
+
+        Log::info('Fetching choices for assignment ID: ' . $id);
+        
+        $choices = Choice::where('assignment_id', $id)->with('course','instructor')->get();        // Return the choices in a JSON response
+        return response()->json($choices);
     }
     public function bulkStore(Request $request) {
         // Validate the incoming data to ensure we have an array of choices

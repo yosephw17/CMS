@@ -44,7 +44,7 @@ class Instructor extends Model
     }
     public function students()
 {
-    return $this->belongsTo(Instructor::class, 'assigned_mentor_id');}
+    return $this->hasMany(Student::class, 'assigned_mentor_id');}
 
 
     public function results()

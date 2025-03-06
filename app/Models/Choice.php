@@ -11,7 +11,10 @@ class Choice extends Model
     protected $table = 'choice';
 
     protected $fillable = [
-        'rank', 'assignment_id', 'instructor_id', 'course_id', 
+        'instructor_id',
+        'course_id',
+        'assignment_id',
+        'rank',
 
     ];
     public function instructor()
@@ -19,10 +22,10 @@ class Choice extends Model
     return $this->belongsTo(Instructor::class);
 }
 public function course() {
-    return $this->belongsTo(Course::class);
+    return $this->belongsTo(Course::class,'course_id');
 }
 
 public function assignment() {
-    return $this->belongsTo(Assignment::class);
+    return $this->belongsTo(Assignment::class,'assignment_id');
 }
 }

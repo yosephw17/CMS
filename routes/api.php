@@ -4,6 +4,7 @@ use App\Http\Controllers\ChoiceController;
 use App\Http\Controllers\CourseController;
 use Illuminate\Http\Request;
 
+use App\Http\Controllers\MentorController;
 use App\Http\Controllers\SemesterController;
 use App\Http\Controllers\YearController;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,9 @@ Route::post('/choices/bulk', [ChoiceController::class, 'bulkStore']);
 Route::apiResource('instructors', InstructorController::class);
 Route::get('assignments/latest', [AssignmentController::class, 'latest']);
 Route::post('/request', [RequestController::class,'store']);
+Route::post('/send-message', [MentorController::class,'store']);
+Route::get('/choices', [ChoiceController::class,'index']);
+Route::get('/choice-assignment/{id}', [ChoiceController::class,'fetchAssignmentChoice']);
 
 
     Route::apiResource('results', ResultController::class);

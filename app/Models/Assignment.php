@@ -19,6 +19,6 @@ class Assignment extends Model
     }
     public function choices()
     {
-        return $this->hasMany(Choice::class);
+        return $this->hasMany(Choice::class,'assignment_id');
     }
 }
