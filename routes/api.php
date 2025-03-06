@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ChoiceController;
 use App\Http\Controllers\CourseController;
+use Illuminate\Http\Request;
 
 use App\Http\Controllers\SemesterController;
 use App\Http\Controllers\YearController;
@@ -19,6 +20,8 @@ use App\Http\Controllers\ResearchController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\RequestController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ResultController;
 
 /*
 |----------------------------------------------------------------------
@@ -30,6 +33,7 @@ use App\Http\Controllers\RequestController;
 | here that require authentication.
 |
 */
+
 Route::get('/sanctum/csrf-cookie', function () {
     return response()->json(['message' => 'Sanctum active']);
 });
@@ -43,11 +47,13 @@ Route::get('assignments/latest', [AssignmentController::class, 'latest']);
 Route::post('/request', [RequestController::class,'store']);
 
 
+    Route::apiResource('results', ResultController::class);
 // Protected Routes that require Sanctum authentication
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
-   
+    Route::apiResource('roles', RoleController::class);
+
         Route::post('/instructor-roles', [InstructorRoleController::class, 'store']); // Create role
         Route::delete('/instructor-roles/{id}', [InstructorRoleController::class, 'destroy']); // Create role
         Route::get('/instructor-roles', [InstructorRoleController::class, 'index']); // Get all roles

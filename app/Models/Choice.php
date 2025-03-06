@@ -11,7 +11,7 @@ class Choice extends Model
     protected $table = 'choice';
 
     protected $fillable = [
-        'rank',
+        'rank', 'assignment_id', 'instructor_id', 'course_id', 
 
     ];
     public function instructor()
