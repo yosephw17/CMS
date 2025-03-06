@@ -25,4 +25,8 @@ class Course extends Model
     {
         return $this->hasMany(YearSemesterCourse::class);
    }
+   public function choices()
+    {
+        return $this->hasMany(Choice::class);
+    }
 }
