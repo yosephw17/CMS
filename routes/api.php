@@ -18,7 +18,11 @@ use App\Http\Controllers\ProfessionalExperienceController;
 use App\Http\Controllers\ResearchController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\ParameterController;
+
 use App\Http\Controllers\MentorshipController;
+
+use App\Http\Controllers\RequestController;
+
 
 /*
 |----------------------------------------------------------------------
@@ -40,6 +44,7 @@ Route::apiResource('courses', CourseController::class);
 Route::post('/choices/bulk', [ChoiceController::class, 'bulkStore']);
 Route::apiResource('instructors', InstructorController::class);
 Route::get('assignments/latest', [AssignmentController::class, 'latest']);
+Route::post('/request', [RequestController::class,'store']);
 
 
 // Protected Routes that require Sanctum authentication

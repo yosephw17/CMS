@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 
 class Instructor extends Model
 {
-    use HasFactory;
+    use HasFactory ,Notifiable;
 
     protected $fillable = [
         'name',
@@ -45,5 +46,10 @@ class Instructor extends Model
 {
     return $this->belongsTo(Instructor::class, 'assigned_mentor_id');}
 
+
+    public function results()
+    {
+        return $this->hasMany(Result::class);
+    }
 
 }
