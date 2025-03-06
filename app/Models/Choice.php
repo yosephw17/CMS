@@ -15,6 +15,7 @@ class Choice extends Model
         'course_id',
         'assignment_id',
         'rank',
+
     ];
     public function instructor()
 {

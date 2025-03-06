@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ChoiceController;
 use App\Http\Controllers\CourseController;
+use Illuminate\Http\Request;
 
 use App\Http\Controllers\MentorController;
 use App\Http\Controllers\SemesterController;
@@ -23,6 +24,8 @@ use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MentorshipController;
 
 use App\Http\Controllers\RequestController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ResultController;
 
 
 /*
@@ -35,6 +38,7 @@ use App\Http\Controllers\RequestController;
 | here that require authentication.
 |
 */
+
 Route::get('/sanctum/csrf-cookie', function () {
     return response()->json(['message' => 'Sanctum active']);
 });
@@ -51,16 +55,21 @@ Route::get('/choices', [ChoiceController::class,'index']);
 Route::get('/choice-assignment/{id}', [ChoiceController::class,'fetchAssignmentChoice']);
 
 
+    Route::apiResource('results', ResultController::class);
 // Protected Routes that require Sanctum authentication
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+
+    Route::apiResource('roles', RoleController::class);
+
+
     Route::post('/upload-csv', [MentorshipController::class, 'uploadCSV']);
 Route::post('/assign-mentors', [MentorshipController::class, 'assignMentors']);
 Route::put('/assign-mentors/{id}', [MentorshipController::class, 'update']);
 Route::get('/students', [MentorshipController::class, 'index']);
 
-   
+
         Route::post('/instructor-roles', [InstructorRoleController::class, 'store']); // Create role
         Route::delete('/instructor-roles/{id}', [InstructorRoleController::class, 'destroy']); // Create role
         Route::get('/instructor-roles', [InstructorRoleController::class, 'index']); // Get all roles

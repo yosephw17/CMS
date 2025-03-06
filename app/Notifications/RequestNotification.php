@@ -7,11 +7,11 @@ use Illuminate\Notifications\Messages\MailMessage;
 
 class RequestNotification extends Notification
 {
-    protected $instructor;
+    protected $signedUrl;
 
-    public function __construct($instructor)
+    public function __construct($signedUrl)
     {
-        $this->instructor = $instructor;
+        $this->signedUrl = $signedUrl;
     }
 
     public function via($notifiable)
@@ -22,9 +22,10 @@ class RequestNotification extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-                    ->subject('New Request Notification')
-                    ->line('You have a new request.')
-                    ->action('View Request', url('/'))
-                    ->line('Thank you!');
+            ->subject('New Request Notification')
+            ->line('You have a new request. Click the link below to choose your courses:')
+            ->action('Choose Courses', $this->signedUrl)
+            ->line('This link will expire in 24 hours.')
+            ->line('Thank you!');
     }
 }
