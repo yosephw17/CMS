@@ -18,7 +18,11 @@ use App\Http\Controllers\ProfessionalExperienceController;
 use App\Http\Controllers\ResearchController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\ParameterController;
+
+use App\Http\Controllers\MentorshipController;
+
 use App\Http\Controllers\RequestController;
+
 
 /*
 |----------------------------------------------------------------------
@@ -47,6 +51,11 @@ Route::post('/request', [RequestController::class,'store']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::post('/upload-csv', [MentorshipController::class, 'uploadCSV']);
+Route::post('/assign-mentors', [MentorshipController::class, 'assignMentors']);
+Route::put('/assign-mentors/{id}', [MentorshipController::class, 'update']);
+Route::get('/students', [MentorshipController::class, 'index']);
+
    
         Route::post('/instructor-roles', [InstructorRoleController::class, 'store']); // Create role
         Route::delete('/instructor-roles/{id}', [InstructorRoleController::class, 'destroy']); // Create role
