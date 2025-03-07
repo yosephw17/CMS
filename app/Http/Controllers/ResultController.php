@@ -8,7 +8,7 @@ class ResultController extends Controller
 {
     public function index()
     {
-        $results = Result::where('is_assigned',1)->get();
+        $results = Result::all();
         return response()->json($results);
     }
 }

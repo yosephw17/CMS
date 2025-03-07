@@ -16,12 +16,21 @@ class CourseAssignmentService
         DB::beginTransaction();
     
         try {
+            Log::info("Starting course assignment process for assignment ID: {$assignment_id}");
+    
+            // Fetch instructors with their related data
             $instructors = Instructor::with('role', 'choices', 'professionalExperiences', 'researches', 'educationalBackgrounds')
                 ->where('is_available', 1)
                 ->get();
+            Log::info("Fetched instructors:", ['count' => $instructors->count()]);
     
+            // Fetch parameters and courses
             $parameters = Parameter::pluck('points', 'name');
             $courses = Course::all();
+            Log::info("Fetched parameters and courses:", [
+                'parameters' => $parameters,
+                'courses_count' => $courses->count(),
+            ]);
     
             $instructorScores = [];
             $assignedResults = [];
@@ -30,6 +39,8 @@ class CourseAssignmentService
     
             // Calculate scores for each instructor-course pair
             foreach ($instructors as $instructor) {
+                Log::info("Calculating scores for instructor:", ['instructor_id' => $instructor->id, 'name' => $instructor->name]);
+    
                 foreach ($courses as $course) {
                     $score = 0;
     
@@ -72,6 +83,13 @@ class CourseAssignmentService
                         'score' => $score,
                         'choice_rank' => $choiceRank ?? 999, // Higher number means no preference
                     ];
+    
+                    Log::info("Score calculated for instructor-course pair:", [
+                        'instructor_id' => $instructor->id,
+                        'course_id' => $course->id,
+                        'score' => $score,
+                        'choice_rank' => $choiceRank ?? 999,
+                    ]);
                 }
             }
     
@@ -80,10 +98,13 @@ class CourseAssignmentService
                 ['score', 'desc'],
                 ['choice_rank', 'asc']
             ])->groupBy('course_id');
+            Log::info("Sorted scores:", ['sorted_scores' => $sortedScores]);
     
             $allResults = []; // Store all instructors' scores per course
     
             foreach ($courses as $course) {
+                Log::info("Processing course:", ['course_id' => $course->id, 'name' => $course->name]);
+    
                 $isCourseAssigned = false;
                 $courseResults = []; // Store all instructor scores for this course
     
@@ -139,13 +160,17 @@ class CourseAssignmentService
                                 'point' => $instructorData['score'],
                                 'is_assigned' => $is_assigned,
                             ]);
-                            Log::info("Assigned Instructor {$instructor->name} to Course {$course->name}", [
-                                'Instructor ID' => $instructor->id,
-                                'Course ID' => $course->id,
-                                'Score' => $instructorData['score'],
-                                'Choice Rank' => $instructorData['choice_rank'],
-                                'Final Assigned' => $is_assigned
+    
+                            Log::info("Assigned Instructor to Course:", [
+                                'instructor_id' => $instructor->id,
+                                'instructor_name' => $instructor->name,
+                                'course_id' => $course->id,
+                                'course_name' => $course->name,
+                                'score' => $instructorData['score'],
+                                'choice_rank' => $instructorData['choice_rank'],
+                                'is_assigned' => $is_assigned,
                             ]);
+    
                             $assignedResults[] = $result;
                         }
                     }
@@ -156,6 +181,8 @@ class CourseAssignmentService
     
             DB::commit();
     
+            Log::info("Course assignment process completed successfully.");
+    
             return response()->json([
                 'assigned_results' => $assignedResults,
                 'all_scores' => $allResults // For transparency
@@ -163,6 +190,7 @@ class CourseAssignmentService
     
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error("Error during course assignment:", ['error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
