@@ -46,27 +46,31 @@ class MentorAssignmentNotification extends Notification implements ShouldQueue
      * @return \Illuminate\Notifications\Messages\MailMessage
      */
     public function toMail($notifiable)
-    {
-        // Create the email content
-        $mailMessage = (new MailMessage)
-            ->subject('List of Your Assigned Students')
-            ->line('Dear ' . $this->instructor->name . ',')
-            ->line('Here is the list of students assigned to you as their mentor:')
-            ->line('');
+{
+    // Create the email content with HTML formatting
+    $mailMessage = (new MailMessage)
+        ->subject('List of Your Assigned Students')
+        ->greeting('Dear ' . $this->instructor->name . ',')
+        ->line('Here is the list of students assigned to you as their mentor:')
+        ->line('');
 
-        // Add each student's details to the email
-        foreach ($this->students as $student) {
-            $mailMessage->line('- ' . $student->full_name . ' (' . $student->phone_number . ')')
-                        ->line('  Location: ' . $student->location)
-                        ->line('  Hosting Company: ' . $student->hosting_company)
-                        ->line(''); // Add a blank line between students
-        }
-
-        $mailMessage->line('')
-            ->line('Thank you for your support!');
-
-        return $mailMessage;
+    // Add each student's details to the email
+    foreach ($this->students as $student) {
+        $mailMessage->line(
+            "<strong>Name:</strong> " . $student->full_name . "<br>" .
+            "<strong>Phone:</strong> " . $student->phone_number . "<br>" .
+            "<strong>Location:</strong> " . $student->location . "<br>" .
+            "<strong>Hosting Company:</strong> " . $student->hosting_company
+        )
+        ->line(''); // Add a blank line between students
     }
+
+    $mailMessage->line('')
+        ->line('Thank you for your support!')
+        ->salutation('Best regards,<br>Your Team');
+
+    return $mailMessage;
+}
 
     /**
      * Get the array representation of the notification.
