@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Assignment;
 use App\Services\CourseAssignmentService;
+use Illuminate\Support\Facades\Log;
 
 class AssignmentController extends Controller
 {
@@ -63,8 +64,6 @@ class AssignmentController extends Controller
     {
         // Ensure the assignment exists
         $assignment = Assignment::findOrFail($id);
-
-        // Call the service and get the assigned results
         $assignedResults = $this->courseAssignmentService->assignCourses($assignment->id);
 
         // Return the assignment details along with assigned results

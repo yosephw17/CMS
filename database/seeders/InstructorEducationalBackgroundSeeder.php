@@ -10,8 +10,8 @@ class InstructorEducationalBackgroundSeeder extends Seeder
 {
     public function run()
     {
-        $instructorIds = range(657, 676);
-        $fieldIds = [1, 2, 53, 54, 55, 113];
+        $instructorIds = range(2, 21);
+        $fieldIds = [1, 2, 3, 4, 5, 6,7,8,9,10,11];
         $eduBackgroundIds = [
             1, 2, 3, // Computer Science
             4, 5, // Computer Engineering

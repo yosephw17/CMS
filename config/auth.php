@@ -14,7 +14,7 @@ return [
     */
 
     'defaults' => [
-        'guard' => 'web',
+        'guard' => 'web', // Default guard is 'web' for web-based authentication
         'passwords' => 'users',
     ],
 
@@ -31,13 +31,19 @@ return [
     | users are actually retrieved out of your database or other storage
     | mechanisms used by this application to persist your user's data.
     |
-    | Supported: "session"
+    | Supported: "session", "token", "sanctum"
     |
     */
 
     'guards' => [
         'web' => [
             'driver' => 'session',
+            'provider' => 'users',
+        ],
+
+        // Add the 'sanctum' guard for API authentication
+        'sanctum' => [
+            'driver' => 'sanctum',
             'provider' => 'users',
         ],
     ],
@@ -111,5 +117,17 @@ return [
     */
 
     'password_timeout' => 10800,
-'sanctum' => [ 'expiration' => env('SANCTUM_EXPIRATION', 120), ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sanctum Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Here you may define the expiration time for Sanctum tokens.
+    |
+    */
+
+    'sanctum' => [
+        'expiration' => env('SANCTUM_EXPIRATION', 120), // Token expiration in minutes
+    ],
 ];

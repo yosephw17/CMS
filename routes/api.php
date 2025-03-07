@@ -26,6 +26,7 @@ use App\Http\Controllers\MentorshipController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ResultController;
+use App\Http\Controllers\UserController;
 
 
 /*
@@ -62,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
 
     Route::apiResource('roles', RoleController::class);
+    Route::apiResource('users', UserController::class);
 
 
     Route::post('/upload-csv', [MentorshipController::class, 'uploadCSV']);
