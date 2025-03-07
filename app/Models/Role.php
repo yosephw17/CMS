@@ -11,7 +11,7 @@ class Role extends Model
 
     protected $fillable = ['name'];
     protected $attributes = [
-        'guard_name' => 'web',
+        'guard_name' => 'sanctum',
     ];
     
 }
