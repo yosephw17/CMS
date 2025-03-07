@@ -21,10 +21,11 @@ class RequestController extends Controller
     
     public function store(Request $request)
 {
+    
     set_time_limit(2107000); // Long execution time (if necessary)
 
     try {
-        $instructor = Instructor::find(657); // Replace with dynamic ID if needed
+        $instructor = Instructor::find(8); // Replace with dynamic ID if needed
         if (!$instructor) {
             return response()->json(['message' => 'Instructor not found.'], 404);
         }

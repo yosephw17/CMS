@@ -30,11 +30,11 @@ class Instructor extends Model
     }
     public function professionalExperiences()
     {
-        return $this->belongsToMany(professionalExperience::class);  
+        return $this->belongsToMany(professionalExperience::class,'instructor_professional_experience','instructor_id','pro_exp_id');  
     }
     public function educationalBackgrounds()
     {
-        return $this->belongsToMany(EducationalBackground::class, 'instructor_educational_background', 'instructor_id', 'edu_background_id')
+        return $this->belongsToMany(EducationalBackground::class, 'instructor_educational_background', 'instructor_id', relatedPivotKey: 'edu_background_id')
                     ->withTimestamps();
     }   
 

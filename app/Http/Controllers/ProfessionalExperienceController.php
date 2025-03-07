@@ -15,7 +15,7 @@ class ProfessionalExperienceController extends Controller
     public function index()
     {
         $experiences = ProfessionalExperience::with('field')->get();
-        return ProfessionalExperience::with('field')->get();
+        return response()->json($experiences);
     }
 
     /**
