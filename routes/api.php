@@ -27,6 +27,8 @@ use App\Http\Controllers\MentorshipController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ResultController;
+use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\SectionController;
 
 use App\Models\EducationalBackground;
 
@@ -91,10 +93,12 @@ Route::get('/students', [MentorshipController::class, 'index']);
     Route::apiResource('fields', FieldController::class);
     Route::apiResource('professional-experiences', ProfessionalExperienceController::class);
     Route::apiResource('educational-backgrounds', EducationalBackgroundController::class);
-        Route::resource('researches', ResearchController::class);
+    Route::resource('researches', ResearchController::class);
     Route::resource('assignments', AssignmentController::class);
     Route::resource('parameters', ParameterController::class);
     Route::post('/assignments/{id}/assign-courses', [AssignmentController::class, 'assignCourses']);
-
+    
+    Route::apiResource('departments', DepartmentController::class);
+    Route::apiResource('sections', SectionController::class);
 
 });

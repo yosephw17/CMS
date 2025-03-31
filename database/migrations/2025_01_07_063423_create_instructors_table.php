@@ -19,12 +19,14 @@
                 $table->string('email')->unique(); 
                 $table->string('phone')->nullable(); 
                 $table->unsignedBigInteger('role_id');
+                $table->unsignedBigInteger('department_id');
                 $table->boolean('is_available')->default(true); 
                 $table->boolean('is_studying')->default(false); 
                 $table->boolean('is_approved')->default(false); 
                 $table->timestamps(); 
 
                 $table->foreign('role_id')->references('id')->on('instructor_roles')->onDelete('cascade');
+                $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');
             });
         }
 
