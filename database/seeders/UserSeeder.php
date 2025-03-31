@@ -31,9 +31,9 @@ class UserSeeder extends Seeder
 
         // You can create additional users as needed
         User::create([
-            'name' => 'Doctor User',
-            'email' => 'doctor@example.com',
+            'name' => 'Secretary User',
+            'email' => 'secretary@example.com',
             'password' => Hash::make('password123'),
-        ]); // Assign the 'doctor' role if needed
+        ]); // Assign the 'secretary' role if needed
     }
 }
