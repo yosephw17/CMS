@@ -22,7 +22,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password123'), // Ensure to use a hashed password
         ]); // Assign the 'admin' role, if using Spatie roles and permissions package
 
-        // Create a regular user
+        // Create a regular users
         User::create([
             'name' => 'Regular User',
             'email' => 'user@example.com',
