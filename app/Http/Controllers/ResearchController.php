@@ -34,7 +34,15 @@ class ResearchController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $research = Research::create($request->all());
+          // Ensure isApproved is explicitly set to false
+    $research = Research::create([
+        'title' => $request->title,
+        'field_id' => $request->field_id,
+        'instructor_id' => $request->instructor_id,
+        'link' => $request->link,
+        'description' => $request->description,
+        'isApproved' => false, // Always set to false
+    ]);
 
         return response()->json($research, 201);
     }

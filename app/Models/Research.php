@@ -32,4 +32,5 @@ class Research extends Model
     {
         return $this->belongsTo(Instructor::class);
     }
+    
 }

@@ -34,14 +34,15 @@ class Instructor extends Model
     }
     public function educationalBackgrounds()
     {
-        return $this->belongsToMany(EducationalBackground::class, 'instructor_educational_background', 'instructor_id', relatedPivotKey: 'edu_background_id')
-                    ->withTimestamps();
+        return $this->belongsToMany(EducationalBackground::class, 'instructor_educational_background', 'instructor_id', 'edu_background_id')
+        ->withPivot('field_id');
     }   
 
     public function researches()
     {
         return $this->hasMany(Research::class);
     }
+    
     public function students()
 {
     return $this->hasMany(Student::class, 'assigned_mentor_id');}
