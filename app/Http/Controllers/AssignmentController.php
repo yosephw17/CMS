@@ -41,11 +41,11 @@ class AssignmentController extends Controller
     {
         $request->validate([
             'year' => 'required|string',
-            'semester' => 'required|integer',
         ]);
     
         $exists = Assignment::where('year', $request->year)
-                            ->where('semester', $request->semester)
+                            ->where('semester_id', $request->semester_id)
+                            ->where('department_id', $request->department_id)
                             ->exists();
     
         if ($exists) {
@@ -54,7 +54,8 @@ class AssignmentController extends Controller
     
         $assignment = Assignment::create([
             'year' => $request->year,
-            'semester' => $request->semester,
+            'semester_id' => $request->semester_id,
+            'department_id'=>$request->department_id,
         ]);
     
         return response()->json(['success' => 'Assignment created successfully.', 'assignment' => $assignment], 201);
@@ -79,12 +80,12 @@ class AssignmentController extends Controller
 
         $request->validate([
             'year' => 'required|string',
-            'semester' => 'required|integer',
-        ]);
+         ]);
 
         $assignment->update([
             'year' => $request->year,
-            'semester' => $request->semester,
+            'semester_id' => $request->semester_id,
+            'department_id'=>$request->department_id,
         ]);
 
         return response()->json($assignment);

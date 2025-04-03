@@ -12,12 +12,14 @@ return new class extends Migration {
             $table->string('full_name'); // Replacing 'name' with 'full_name'
             $table->string('sex');
             $table->string('phone_number')->unique();
-            $table->string('department');
             $table->string('hosting_company')->nullable();
             $table->string('location')->nullable();
+            $table->unsignedBigInteger('department_id');
             $table->unsignedBigInteger('assigned_mentor_id')->nullable();
             $table->foreign('assigned_mentor_id')->references('id')->on('instructors')->onDelete('set null');
             $table->timestamps();
+            $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');
+
         });
     }
 
