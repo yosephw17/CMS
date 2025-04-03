@@ -10,6 +10,7 @@ class InstructorsTableSeeder extends Seeder
     public function run()
     {
         $instructors = [
+
             ['name' => 'Eneyachew Tamir', 'email' => 'eneyachew.tamir@example.com', 'phone' => '0912345678', 'role_id' => 1, 'is_available' => 0, 'is_studying' => 1, 'is_approved' => 1, 'department_id' => 2],
             ['name' => 'Adugna Necho', 'email' => 'adugna.necho@example.com', 'phone' => '0912345679', 'role_id' => 1, 'is_available' => 0, 'is_studying' => 1, 'is_approved' => 1, 'department_id' => 2],
             ['name' => 'Tinbit Addimasu', 'email' => 'tinbit.addimasu@example.com', 'phone' => '0912345680', 'role_id' => 1, 'is_available' => 1, 'is_studying' => 0, 'is_approved' => 1, 'department_id' => 2],
@@ -31,6 +32,7 @@ class InstructorsTableSeeder extends Seeder
             ['name' => 'Abreham Alene', 'email' => 'Abreham.biyadgilgn@example.com', 'phone' => '0912345687', 'role_id' => 1, 'is_available' => 1, 'is_studying' => 0, 'is_approved' => 1, 'department_id' => 2],
             ['name' => 'Maru Kindeneh', 'email' => 'Maru.biyadgilgn@example.com', 'phone' => '0912345687', 'role_id' => 1, 'is_available' => 1, 'is_studying' => 0, 'is_approved' => 1, 'department_id' => 2],
             // Add more instructors as needed...
+
         ];
 
         foreach ($instructors as $instructor) {

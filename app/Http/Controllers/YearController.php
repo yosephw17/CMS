@@ -7,14 +7,16 @@ use Illuminate\Http\Request;
 
 class YearController extends Controller
 {
-  
+
  
     public function index()
     {
-        $years = Year::all();
+        $years = Year::with('sections')->get();
 
         return response()->json([
-            'years' => $years,
+            'success' => true,
+            'message' => 'Years',
+            'data' => $years,
         ]);
     }
 }
