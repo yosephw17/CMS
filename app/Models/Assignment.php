@@ -10,7 +10,8 @@ class Assignment extends Model
     use HasFactory;
     protected $fillable = [
         'year',
-        'semester',
+        'semester_id',
+        'department_id'
 
     ];
     public function results()
