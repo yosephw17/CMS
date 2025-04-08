@@ -29,4 +29,8 @@ class Course extends Model
     {
         return $this->hasMany(Choice::class);
     }
+    public function instructors()
+    {
+        return $this->belongsToMany(Instructor::class,'instructor_courses','instructor_id')->withPivot('number_of_semesters','is_recent'); 
+    }
 }
