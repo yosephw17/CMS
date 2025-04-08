@@ -10,10 +10,29 @@ class YearSemesterCourseController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-        return response()->json(YearSemesterCourse::with(['year', 'semester', 'course'])->get());
-    }
+   // CourseController.php
+public function index(Request $request)
+{
+    // $validated = $request->validate([
+    //     'year_name' => 'required|string',
+    //     'semester_name' => 'required|string',
+    //     'department_name' => 'required|string'
+    // ]);
+
+    $courses = YearSemesterCourse::with('course','semester','year','department')
+        // ->whereHas('year', function($q) use ($validated) {
+        //     $q->where('name', $validated['year_name']);
+        // })
+        // ->whereHas('semester', function($q) use ($validated) {
+        //     $q->where('name', $validated['semester_name']);
+        // })
+        // ->whereHas('department', function($q) use ($validated) {
+        //     $q->where('name', $validated['department_name']);
+        // })
+        ->get();
+
+    return response()->json($courses);
+}
 
     /**
      * Show the form for creating a new resource.
@@ -31,12 +50,13 @@ class YearSemesterCourseController extends Controller
         $request->validate([
             'year_id' => 'required|exists:years,id',
             'semester_id' => 'required|exists:semesters,id',
-            'course_id' => 'required|exists:courses,id'
+            'course_id' => 'required|exists:courses,id',
+            'department_id' => 'required|exists:departments,id'
         ]);
 
         $yearSemesterCourse = YearSemesterCourse::create($request->all());
 
-        return response()->json($yearSemesterCourse->load(['year', 'semester', 'course']), 201);
+        return response()->json($yearSemesterCourse->load(['year', 'semester', 'course','department']), 201);
     }
 //     public function removeCourse(Request $request, $courseId)
 // {
