@@ -37,6 +37,11 @@ class Instructor extends Model
         return $this->belongsToMany(EducationalBackground::class, 'instructor_educational_background', 'instructor_id', 'edu_background_id')
         ->withPivot('field_id');
     }   
+    public function courses()
+    {
+        return $this->belongsToMany(Course::class, 'instructor_course', 'instructor_id', 'course_id')
+        ->withPivot('is_recent', 'number_of_semesters');
+    }   
 
     public function researches()
     {
