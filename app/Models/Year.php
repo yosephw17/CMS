@@ -18,4 +18,8 @@ class Year extends Model
     {
         return $this->hasMany(Section::class);
     }
+    public function departments()
+    {
+        return $this->hasMany(Section::class);
+    }
 }
