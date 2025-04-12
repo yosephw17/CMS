@@ -16,10 +16,15 @@ class Course extends Model
         'cp',
         'lecture_cp',
         'lab_cp',
+        'department_id'
     ];
     public function fields()
     {
         return $this->belongsToMany(Field::class);  
+    }
+    public function department()
+    {
+        return $this->belongsTo(Department::class);  
     }
    public function yearSemesterCourses()
     {

@@ -16,7 +16,7 @@ class CourseController extends Controller
     public function index()
     {
         // Retrieve all courses with related fields
-        $courses = Course::with('fields')->get();
+        $courses = Course::with('fields','department')->get();
         return response()->json($courses);
     }
 

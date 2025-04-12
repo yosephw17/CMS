@@ -13,22 +13,10 @@ class YearSemesterCourseController extends Controller
    // CourseController.php
 public function index(Request $request)
 {
-    // $validated = $request->validate([
-    //     'year_name' => 'required|string',
-    //     'semester_name' => 'required|string',
-    //     'department_name' => 'required|string'
-    // ]);
+    
 
-    $courses = YearSemesterCourse::with('course','semester','year','department')
-        // ->whereHas('year', function($q) use ($validated) {
-        //     $q->where('name', $validated['year_name']);
-        // })
-        // ->whereHas('semester', function($q) use ($validated) {
-        //     $q->where('name', $validated['semester_name']);
-        // })
-        // ->whereHas('department', function($q) use ($validated) {
-        //     $q->where('name', $validated['department_name']);
-        // })
+    $courses = YearSemesterCourse::with('course.department','semester','year','department')
+        
         ->get();
 
     return response()->json($courses);
