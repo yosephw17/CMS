@@ -21,4 +21,8 @@ class Result extends Model
     {
         return $this->belongsTo(Instructor::class);
     }
+    public function assignment()
+    {
+        return $this->belongsTo(Assignment::class);
+    }
 }

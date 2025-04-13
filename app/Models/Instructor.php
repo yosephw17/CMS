@@ -24,6 +24,10 @@ class Instructor extends Model
     {
         return $this->belongsTo(InstructorRole::class);
     }
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
     public function choices()
     {
         return $this->hasMany(Choice::class); 
