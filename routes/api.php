@@ -97,7 +97,9 @@ Route::get('/students', [MentorshipController::class, 'index']);
     Route::resource('assignments', AssignmentController::class);
     Route::resource('parameters', ParameterController::class);
     Route::post('/assignments/{id}/assign-courses', [AssignmentController::class, 'assignCourses']);
-    
+    Route::get('/assignments/{id}', [AssignmentController::class, 'show'])->name('assignments.show');
+    Route::put('/assignments/edit/{id}', [AssignmentController::class, 'assignmentUpdate']);
+
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('sections', SectionController::class);
 

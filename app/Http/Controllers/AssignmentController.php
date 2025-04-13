@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Assignment;
+use App\Models\Result;
 use App\Services\CourseAssignmentService;
 use Illuminate\Support\Facades\Log;
 
@@ -18,12 +19,16 @@ class AssignmentController extends Controller
 
     public function index()
     {
-        $assignments = Assignment::with(['results.instructor', 'results.course'])->get();
+        $assignments = Assignment::with(['results.instructor', 'results.course','results.instructor.role'])->get();
         return response()->json($assignments);
-
 
     }
 
+    public function show($id){
+        $assignment = Assignment::with(['results.instructor', 'results.course'])->findOrFail($id);
+        return response()->json($assignment);
+
+    }
     public function latest()
     
     {
@@ -73,6 +78,58 @@ class AssignmentController extends Controller
             'assigned_results' => $assignedResults
         ], 201);
     }
+// public function assignmentUpdate(Request $request, $id){
+//     $request->validate([
+//         'instructor_id' => 'required|exists:instructors,id',
+//         'course_id'=>'required|exists:courses,id',
+//         'change_reason' => 'required|string',
+//         'is_assigned' => 'boolean',
+//     ]);
+//     $result = Result::where('assignment_id',$id)->where('instructor_id', $request->instructor_id)->where('course_id',$request->course_id)->get();
+// Log::info("result", $result->all());
+//     // Optional: log previous instructor if needed
+//     // $assignment->previous_instructor_id = $assignment->instructor_id;
+
+//     $result->instructor_id = $request->instructor_id;
+//     $result->change_reason = $request->change_reason;
+//     $result->is_assigned = $request->is_assigned ?? 1;
+//     $result->save();
+
+//     return response()->json([
+//         'message' => 'Assignment updated successfully',
+//         'assignment' => $assignment,
+//     ]);
+// }
+public function assignmentUpdate(Request $request, $id) {
+    $request->validate([
+        'instructor_id' => 'required|exists:instructors,id',
+        'previous_instructor_id' => 'required|exists:instructors,id',
+        'course_id' => 'required|exists:courses,id',
+        'change_reason' => 'required|string',
+        'is_assigned' => 'boolean',
+    ]);
+
+    $result = Result::where('assignment_id', $id)
+                    ->where('instructor_id', $request->previous_instructor_id)
+                    ->where('course_id', $request->course_id)
+                    ->first(); // Get the first result
+                    Log::info("Assignment Update - assignment_id: " . $id . ", instructor_id: " . $request->instructor_id . ", course_id: " . $request->previous_instructor_id);
+
+    if (!$result) {
+        return response()->json(['message' => 'Assignment not found'], 404);
+    }
+
+    // Update the assignment
+    $result->instructor_id = $request->instructor_id;
+    $result->reason = $request->change_reason;
+    $result->is_assigned = $request->is_assigned ?? 1;
+    $result->save();
+
+    return response()->json([
+        'message' => 'Assignment updated successfully',
+        'assignment' => $result,
+    ]);
+}
 
     public function update(Request $request, $id)
     {
