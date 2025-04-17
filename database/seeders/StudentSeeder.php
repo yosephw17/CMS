@@ -14,14 +14,14 @@ class StudentSeeder extends Seeder
 
         // Define Ethiopian names in Latin script
         $ethiopianFirstNames = [
-            'Abebe', 'Alemu', 'Bereket', 'Dawit', 'Elias', 'Fitsum', 'Girma', 'Habtamu', 'Kebede', 'Lemma', 
-            'Mekonnen', 'Nigatu', 'Selam', 'Tadesse', 'Worku', 'Yohannes', 'Zerihun', 'Alem', 'Birtukan', 'Etenesh', 
+            'Abebe', 'Alemu', 'Bereket', 'Dawit', 'Elias', 'Fitsum', 'Girma', 'Habtamu', 'Kebede', 'Lemma',
+            'Mekonnen', 'Nigatu', 'Selam', 'Tadesse', 'Worku', 'Yohannes', 'Zerihun', 'Alem', 'Birtukan', 'Etenesh',
             'Fasika', 'Genet', 'Hana', 'Kidan', 'Liya', 'Marta', 'Netsanet', 'Rahel', 'Sara', 'Tigist', 'Yodit', 'Zewditu'
         ];
 
         $ethiopianLastNames = [
-            'Tesfaye', 'Demissie', 'Gebre', 'Kassa', 'Mulugeta', 'Assefa', 'Tadesse', 'Girma', 'Hailu', 'Lemma', 
-            'Mekonnen', 'Nigatu', 'Selam', 'Worku', 'Yohannes', 'Zerihun', 'Alemayehu', 'Bekele', 'Desta', 'Fekadu', 
+            'Tesfaye', 'Demissie', 'Gebre', 'Kassa', 'Mulugeta', 'Assefa', 'Tadesse', 'Girma', 'Hailu', 'Lemma',
+            'Mekonnen', 'Nigatu', 'Selam', 'Worku', 'Yohannes', 'Zerihun', 'Alemayehu', 'Bekele', 'Desta', 'Fekadu',
             'Gebremichael', 'Haileselassie', 'Kebede', 'Mengistu', 'Negash', 'Tekle', 'Woldemariam', 'Zewdie'
         ];
 
@@ -35,7 +35,7 @@ class StudentSeeder extends Seeder
                 'full_name' => $firstName . ' ' . $lastName, // Combine first and last name
                 'sex' => $faker->randomElement(['Male', 'Female']),
                 'phone_number' => $faker->unique()->phoneNumber,
-                'department' => $faker->word,
+                'department_id' => 2,
                 'hosting_company' => $faker->company(),
                 'location' => $faker->city(),
                 'assigned_mentor_id' => null,  // Set mentor ID to null

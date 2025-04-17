@@ -37,6 +37,7 @@ class InstructorController extends Controller
     // Add the role_id to the request data if it's not sent
     $data = $request->all();
     $data['role_id'] = $roleId;
+    $data['department_id'] = $request->department_id ? : 1;
 
     // Remove unnecessary fields from the data
     unset($data['pro_exp_ids']);
@@ -69,7 +70,7 @@ class InstructorController extends Controller
     // Return the newly created instructor as a JSON response
     return response()->json($instructor, 201);
 }
-    
+
 
 public function show($id)
 {
@@ -96,15 +97,15 @@ public function show($id)
             'edu_backgrounds.*.edu_background_id' => 'nullable|integer|exists:educational_backgrounds,id', // Validate each educational background ID
             'edu_backgrounds.*.field_id' => 'nullable|integer|exists:fields,id', // Validate each field ID
         ]);
-    
+
         // Update the instructor data
         $instructor->update($request->except('pro_exp_ids', 'edu_backgrounds'));
-    
+
         // Update the professional experiences
         if ($request->has('pro_exp_ids')) {
             // First, delete old professional experiences
             DB::table('instructor_professional_experience')->where('instructor_id', $instructor->id)->delete();
-    
+
             // Attach new professional experiences
             foreach ($request->pro_exp_ids as $proExpId) {
                 DB::table('instructor_professional_experience')->insert([
@@ -113,12 +114,12 @@ public function show($id)
                 ]);
             }
         }
-    
+
         // Update the educational backgrounds
         if ($request->has('edu_backgrounds')) {
             // First, delete old educational backgrounds
             DB::table('instructor_educational_background')->where('instructor_id', $instructor->id)->delete();
-    
+
             // Attach new educational backgrounds and fields
             foreach ($request->edu_backgrounds as $eduBackground) {
                 DB::table('instructor_educational_background')->insert([
@@ -128,18 +129,18 @@ public function show($id)
                 ]);
             }
         }
-    
+
         // Return the updated instructor as a JSON response
         return response()->json($instructor);
     }
-    
+
     public function destroy(Instructor $instructor)
     {
         $instructor->educationalBackgrounds()->detach();
         $instructor->professionalExperiences()->detach();
-    
+
         $instructor->delete();
-    
+
         return response()->json(['message' => 'Instructor deleted successfully'], 204);
     }
 }
