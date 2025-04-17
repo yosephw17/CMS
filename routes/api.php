@@ -12,6 +12,9 @@ use App\Http\Controllers\AuthController;
 
 use App\Http\Controllers\InstructorRoleController;
 use App\Http\Controllers\YearSemesterCourseController;
+use App\Http\Controllers\EvaluationLinkController;
+use App\Http\Controllers\EvaluationController;
+
 
 use App\Http\Controllers\InstructorController;
 
@@ -42,7 +45,7 @@ use App\Http\Controllers\UserController;
 |----------------------------------------------------------------------
 |
 | These routes are loaded by the RouteServiceProvider and are assigned
-| to the "api" middleware group. You can register additional routes 
+| to the "api" middleware group. You can register additional routes
 | here that require authentication.
 |
 */
@@ -71,6 +74,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/choices', [ChoiceController::class,'index']);
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('users', UserController::class);
+    Route::post('/evaluation-links', [EvaluationLinkController::class, 'generate']);
+
+    // Public evaluation endpoints
+    Route::prefix('evaluate')->group(function () {
+        Route::get('/{hash}', [EvaluationController::class, 'getForm']);
+        Route::post('/{hash}', [EvaluationController::class, 'submit']);
+    });
 
 
     Route::post('/upload-csv', [MentorshipController::class, 'uploadCSV']);
@@ -85,11 +95,11 @@ Route::get('/students', [MentorshipController::class, 'index']);
         Route::patch('/instructor-roles/{id}', [InstructorRoleController::class, 'update']); // Get all roles
         Route::get('/years', [YearController::class, 'index']);
         Route::get('/semesters', [SemesterController::class, 'index']);
-      
+
         Route::resource('year-semester-courses', YearSemesterCourseController::class);
         Route::get('/year-semester-courses-with-year-semester', [YearSemesterCourseController::class, 'findByYearAndSemester']);
-        
-   
+
+
     Route::apiResource('fields', FieldController::class);
     Route::apiResource('professional-experiences', ProfessionalExperienceController::class);
     Route::apiResource('educational-backgrounds', EducationalBackgroundController::class);

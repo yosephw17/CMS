@@ -30,28 +30,28 @@ class Instructor extends Model
     }
     public function choices()
     {
-        return $this->hasMany(Choice::class); 
+        return $this->hasMany(Choice::class);
     }
     public function professionalExperiences()
     {
-        return $this->belongsToMany(professionalExperience::class,'instructor_professional_experience','instructor_id','pro_exp_id');  
+        return $this->belongsToMany(ProfessionalExperience::class,'instructor_professional_experience','instructor_id','pro_exp_id');
     }
     public function educationalBackgrounds()
     {
         return $this->belongsToMany(EducationalBackground::class, 'instructor_educational_background', 'instructor_id', 'edu_background_id')
         ->withPivot('field_id');
-    }   
+    }
     public function courses()
     {
         return $this->belongsToMany(Course::class, 'instructor_course', 'instructor_id', 'course_id')
         ->withPivot('is_recent', 'number_of_semesters');
-    }   
+    }
 
     public function researches()
     {
         return $this->hasMany(Research::class);
     }
-    
+
     public function students()
 {
     return $this->hasMany(Student::class, 'assigned_mentor_id');}

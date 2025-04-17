@@ -12,7 +12,7 @@ class YearSeeder extends Seeder
      */
     public function run(): void
     {
-        $years = ['First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Fifth Year'];
+        $years = ['1', '2', '3', '4', '5'];
 
         // Fetch all department IDs
         $departments = DB::table('departments')->pluck('id');
