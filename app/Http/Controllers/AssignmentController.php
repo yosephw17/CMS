@@ -122,6 +122,7 @@ public function assignmentUpdate(Request $request, $id) {
     // Update the assignment
     $result->instructor_id = $request->instructor_id;
     $result->reason = $request->change_reason;
+    $result->previous_instructor_id = $request->previous_instructor_id;
     $result->is_assigned = $request->is_assigned ?? 1;
     $result->save();
 

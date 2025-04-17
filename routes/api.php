@@ -59,16 +59,16 @@ Route::apiResource('instructors', InstructorController::class);
 Route::get('assignments/latest', [AssignmentController::class, 'latest']);
 Route::post('/request', [RequestController::class,'store']);
 Route::post('/send-message', [MentorController::class,'store']);
-Route::get('/choices', [ChoiceController::class,'index']);
 Route::get('/choice-assignment/{id}', [ChoiceController::class,'fetchAssignmentChoice']);
 
 
-    Route::apiResource('results', ResultController::class);
+Route::apiResource('results', ResultController::class);
 // Protected Routes that require Sanctum authentication
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
-
+    
+    Route::get('/choices', [ChoiceController::class,'index']);
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('users', UserController::class);
 
