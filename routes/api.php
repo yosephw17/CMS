@@ -36,6 +36,8 @@ use App\Http\Controllers\SectionController;
 use App\Models\EducationalBackground;
 
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\GuestInstructorController;
 
 
 
@@ -112,5 +114,7 @@ Route::get('/students', [MentorshipController::class, 'index']);
 
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('sections', SectionController::class);
+    Route::apiResource('schedules', ScheduleController::class);
+    Route::apiResource('guest-instructors', GuestInstructorController::class);
 
 });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CourseController extends Controller
 {
@@ -34,10 +35,11 @@ class CourseController extends Controller
             'cp' => 'required|integer',
             'lecture_cp' => 'nullable|integer',
             'lab_cp' => 'nullable|integer',
+            'department_id' => 'nullable|integer',
             'fields' => 'nullable|array', // Validate that fields is an array
             'fields.*' => 'exists:fields,id' // Each field must exist in the fields table
         ]);
-
+Log::info("message", [$request->all()]);
         // Create the course
         $course = Course::create($request->except('fields'));
 
@@ -82,6 +84,7 @@ class CourseController extends Controller
             'cp' => 'required|integer',
             'lecture_cp' => 'nullable|integer',
             'lab_cp' => 'nullable|integer',
+            'department_id'=>'nullable|integer',
             'fields' => 'nullable|array',
             'fields.*' => 'exists:fields,id'
         ]);
