@@ -14,6 +14,8 @@ use App\Http\Controllers\InstructorRoleController;
 use App\Http\Controllers\YearSemesterCourseController;
 use App\Http\Controllers\EvaluationLinkController;
 use App\Http\Controllers\EvaluationController;
+use App\Http\Controllers\TimetableController;
+
 
 
 use App\Http\Controllers\InstructorController;
@@ -62,6 +64,10 @@ Route::get('/sanctum/csrf-cookie', function () {
     Route::get('/{hash}', [EvaluationController::class, 'getForm']);
     Route::post('/{hash}', [EvaluationController::class, 'submit']);
 });
+
+Route::post('/timetable/generate', [TimetableController::class, 'generate']);
+Route::get('/time-slots', [TimetableController::class, 'fetch']);
+
 // Public Routes for Authentication
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
