@@ -42,12 +42,27 @@ class CourseAssignmentService
             $yearSemesterCourses = YearSemesterCourse::with('course')
                 ->where('semester_id', $semester_id)
                 ->where('department_id', $department_id)
-                ->get();
+                ->get()
+                ->filter(function($yearSemesterCourse) {
+                    // Only include courses that have a department_id
+                    return !is_null($yearSemesterCourse->course->department_id);
+                });
             
-            Log::info("Fetched parameters and year_semester_courses:", [
+            Log::info("Fetched parameters and filtered year_semester_courses:", [
                 'parameters' => $parameters,
                 'year_semester_courses_count' => $yearSemesterCourses->count(),
             ]);
+            
+            if ($yearSemesterCourses->isEmpty()) {
+                DB::commit();
+                return response()->json([
+                    'message' => 'No courses with department assignments found for this semester and department',
+                    'assigned_results' => [],
+                    'all_scores' => [],
+                    'assignment_counts' => [],
+                    'section_counts' => []
+                ]);
+            }
             
             // Get section counts by year_id
             $yearIds = $yearSemesterCourses->pluck('year_id')->unique()->filter()->values();
@@ -75,6 +90,12 @@ class CourseAssignmentService
     
                 foreach ($yearSemesterCourses as $yearSemesterCourse) {
                     $course = $yearSemesterCourse->course;
+                    
+                    // Skip if course doesn't have a department (though we already filtered these out)
+                    if (is_null($course->department_id)) {
+                        continue;
+                    }
+                    
                     $score = 0;
     
                     $choice = $instructor->choices->where('year_semester_course_id', $yearSemesterCourse->id)
@@ -159,6 +180,12 @@ class CourseAssignmentService
             foreach ($sortedScores as $instructorData) {
                 $yearSemesterCourse = YearSemesterCourse::find($instructorData['year_semester_course_id']);
                 $course = $yearSemesterCourse->course;
+                
+                // Additional check to ensure we don't process courses without department
+                if (is_null($course->department_id)) {
+                    continue;
+                }
+                
                 $instructor = Instructor::find($instructorData['instructor_id']);
                 $role = $instructor->role;
                 $loadCapacity = $role->load;

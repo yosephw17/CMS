@@ -20,11 +20,16 @@ class CreateCoursesTable extends Migration
             $table->integer('cp'); 
             $table->integer('lecture_cp')->default(0); 
             $table->integer('lab_cp')->default(0); 
-            $table->unsignedBigInteger('department_id');
+            $table->foreignId('department_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('preferred_lecture_room_id')->nullable();
+            $table->unsignedBigInteger('preferred_lab_room_id')->nullable();
+
 
             $table->timestamps(); 
 
-            $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');
+            $table->foreign('preferred_lecture_room_id')->references('id')->on('rooms')->onDelete('set null');
+            $table->foreign('preferred_lab_room_id')->references('id')->on('rooms')->onDelete('set null');
+
 
         });
     }
