@@ -24,8 +24,10 @@ use App\Http\Controllers\ResearchController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\EducationalBackgroundController;
 use App\Http\Controllers\ParameterController;
+use App\Http\Controllers\EvaluationCategoryController;
 
 use App\Http\Controllers\MentorshipController;
+use App\Http\Controllers\AcademicYearController;
 
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\RoleController;
@@ -53,6 +55,11 @@ use App\Http\Controllers\UserController;
 Route::get('/sanctum/csrf-cookie', function () {
     return response()->json(['message' => 'Sanctum active']);
 });
+ // Public evaluation endpoints
+ Route::prefix('evaluate')->group(function () {
+    Route::get('/{hash}', [EvaluationController::class, 'getForm']);
+    Route::post('/{hash}', [EvaluationController::class, 'submit']);
+});
 // Public Routes for Authentication
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -70,23 +77,27 @@ Route::apiResource('results', ResultController::class);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
-    
+
     Route::get('/choices', [ChoiceController::class,'index']);
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('users', UserController::class);
     Route::post('/evaluation-links', [EvaluationLinkController::class, 'generate']);
+    Route::get('/get-evaluation-links', [EvaluationLinkController::class,'groupedEvaluationLinks']);
+    Route::get('/get-evaluation-links-without-grouping', [EvaluationLinkController::class,'getLink']);
 
-    // Public evaluation endpoints
-    Route::prefix('evaluate')->group(function () {
-        Route::get('/{hash}', [EvaluationController::class, 'getForm']);
-        Route::post('/{hash}', [EvaluationController::class, 'submit']);
-    });
+    Route::get('/get-response',[EvaluationController::class,'getGroupResponses']);
+    Route::get('/get-questions',[EvaluationCategoryController::class, 'getCategoriesWithQuestions']);
+
+
 
 
     Route::post('/upload-csv', [MentorshipController::class, 'uploadCSV']);
 Route::post('/assign-mentors', [MentorshipController::class, 'assignMentors']);
 Route::put('/assign-mentors/{id}', [MentorshipController::class, 'update']);
 Route::get('/students', [MentorshipController::class, 'index']);
+
+// Route::apiResource('academic-years', AcademicYearController::class);
+Route::get('/academic-years', [AcademicYearController::class, 'index']);
 
 
         Route::post('/instructor-roles', [InstructorRoleController::class, 'store']); // Create role

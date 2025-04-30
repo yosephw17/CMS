@@ -10,6 +10,8 @@ class EvaluationLink extends Model
         'instructor_id',
         'student_email',
         'student_name',  // Add this
+        'academic_year_id',
+        'semester_id',
         'hash',
         'is_used'
     ];
@@ -20,6 +22,15 @@ class EvaluationLink extends Model
 
     public function responses()
     {
-        return $this->hasMany(EvaluationResponse::class);
+        return $this->hasMany(EvaluationResponse::class,'link_id');
+    }
+
+    public function academicYear()
+    {
+        return $this->belongsTo(AcademicYear::class);
+    }
+    public function semester()
+    {
+        return $this->belongsTo(Semester::class);
     }
 }
