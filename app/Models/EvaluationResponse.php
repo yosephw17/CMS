@@ -17,4 +17,8 @@ class EvaluationResponse extends Model
     {
         return $this->belongsTo(EvaluationQuestion::class);
     }
+    public function evaluationLink()
+    {
+        return $this->belongsTo(EvaluationLink::class, 'link_id');
+    }
 }

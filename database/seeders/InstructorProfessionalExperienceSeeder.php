@@ -10,14 +10,14 @@ class InstructorProfessionalExperienceSeeder extends Seeder
 {
     public function run()
     {
-        $instructorIds = range(2, 21);
-        $professionalExperienceIds = [1, 2, 3, 4, 5];
+        $instructorIds = range(2, 18);
+        $professionalExperienceIds = [6, 7,8, 8 ,9];
         $data = [];
 
         foreach ($instructorIds as $index => $instructorId) {
             // Evenly distribute professional_experience_ids
             $professional_experience_id = $professionalExperienceIds[$index % count($professionalExperienceIds)];
-            
+
             $data[] = [
                 'instructor_id' => $instructorId,
                 'pro_exp_id' => $professional_experience_id,
