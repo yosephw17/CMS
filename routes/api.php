@@ -15,6 +15,10 @@ use App\Http\Controllers\YearSemesterCourseController;
 use App\Http\Controllers\EvaluationLinkController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\TimetableController;
+use App\Http\Controllers\QualityQuestionController;
+use App\Http\Controllers\QualityLinkController;
+use App\Http\Controllers\QualityResponseController;
+
 
 
 
@@ -64,6 +68,11 @@ Route::get('/sanctum/csrf-cookie', function () {
     Route::get('/{hash}', [EvaluationController::class, 'getForm']);
     Route::post('/{hash}', [EvaluationController::class, 'submit']);
 });
+Route::prefix('quality-form')->group(function () {
+    Route::get('/{hash}', [QualityResponseController::class, 'getForm']);
+    Route::post('/{hash}', [QualityResponseController::class, 'submit']);
+});
+Route::get('/get-all-quality-responses', [QualityResponseController::class, 'getAllResponses']);
 
 Route::post('/timetable/generate', [TimetableController::class, 'generate']);
 Route::get('/time-slots', [TimetableController::class, 'fetch']);
@@ -78,7 +87,11 @@ Route::get('assignments/latest', [AssignmentController::class, 'latest']);
 Route::post('/request', [RequestController::class,'store']);
 Route::post('/send-message', [MentorController::class,'store']);
 Route::get('/choice-assignment/{id}', [ChoiceController::class,'fetchAssignmentChoice']);
-
+Route::get('/quality-questions', [QualityQuestionController::class,'index']);
+Route::post('/quality-links', [QualityLinkController::class,'store']);
+Route::post('/quality-responses', [QualityResponseController::class, 'store']);
+Route::get('/quality-responses/{hash}', [QualityResponseController::class, 'show']);
+Route::get('/quality-responses/status/{hash}', [QualityResponseController::class, 'checkLinkStatus']);
 
 Route::apiResource('results', ResultController::class);
 // Protected Routes that require Sanctum authentication

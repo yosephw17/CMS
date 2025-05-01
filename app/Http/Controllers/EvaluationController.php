@@ -25,12 +25,8 @@ class EvaluationController extends Controller
     if (!$link) {
         return response()->json([
             'status' => 'invalid',
-            'message' => 'Invalid evaluation link',
-            'ui' => [
-                'icon' => 'error',
-                'color' => 'red-500',
-                'action' => null
-            ]
+            'message' => 'Invalid evaluation link'
+
         ], 404);
     }
 
@@ -42,15 +38,9 @@ class EvaluationController extends Controller
             'details' => [
                 'instructor' => $link->instructor->name,
                 'submitted_at' => $link->updated_at->diffForHumans()
-            ],
-            'ui' => [
-                'icon' => 'check-circle',
-                'color' => 'green-500',
-                'action' => [
-                    'text' => 'View Receipt',
-                    'url' => "#" // Replace with actual route
-                ]
             ]
+
+
         ], 200);
     }
 
@@ -63,15 +53,8 @@ class EvaluationController extends Controller
             'categories' => EvaluationCategory::with(['questions' => function($q) {
                 $q->orderBy('order');
             }])->orderBy('order')->get()
-        ],
-        'ui' => [
-            'icon' => 'edit',
-            'color' => 'blue-500',
-            'action' => [
-                'text' => 'Begin Evaluation',
-                'url' => "#" // Replace with actual route
-            ]
         ]
+
     ]);
 }
 
