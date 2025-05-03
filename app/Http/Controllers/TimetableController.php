@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Day;
 use Illuminate\Support\Facades\Validator;
+use App\Models\TimeSlot;
 
 class TimetableController extends Controller
 {
@@ -172,4 +173,16 @@ class TimetableController extends Controller
             ], 500);
         }
     }
+
+
+    public function toggleBreak(TimeSlot $timeSlot)
+{
+    $newStatus = $timeSlot->toggleBreak();
+
+    return response()->json([
+        'message' => 'Break status toggled successfully',
+        'is_break' => $newStatus,
+        'time_slot' => $timeSlot->load('day') // Optional: include day data
+    ]);
+}
 }

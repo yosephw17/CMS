@@ -21,7 +21,7 @@ use App\Http\Controllers\QualityResponseController;
 use App\Http\Controllers\EvaluatorController;
 
 
-
+use App\Http\Controllers\InstructorTimeSlotController;
 
 use App\Http\Controllers\InstructorController;
 
@@ -77,6 +77,7 @@ Route::get('/get-all-quality-responses', [QualityResponseController::class, 'get
 
 Route::post('/timetable/generate', [TimetableController::class, 'generate']);
 Route::get('/time-slots', [TimetableController::class, 'fetch']);
+Route::patch('/time-slots/{timeSlot}/toggle-break', [TimetableController::class, 'toggleBreak']);
 
 // Public Routes for Authentication
 Route::post('/register', [AuthController::class, 'register']);
@@ -113,6 +114,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/get-questions',[EvaluationCategoryController::class, 'getCategoriesWithQuestions']);
 
 
+    Route::apiResource('instructor-time-slots', InstructorTimeSlotController::class);
+    Route::delete('/instructor-time-slots', [InstructorTimeSlotController::class, 'destroy']);
 
 
     Route::post('/upload-csv', [MentorshipController::class, 'uploadCSV']);
