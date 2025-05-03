@@ -190,46 +190,56 @@ class QualityResponseController extends Controller
 
 
     public function getAllResponses()
-    {
-        $responses = QualityResponse::with([
-                'qualityLink.instructor:id,name,email',
-                'qualityLink.auditSession:id,name',
-                'qualityLink.semester:id,name',
-                'qualityLink.academicYear:id,name',
-                'question:id,question_text,input_type'
-            ])
-            ->whereHas('qualityLink', function($q) {
-                $q->where('is_used', true);
-            })
-            ->get()
-            ->groupBy('quality_link_id')
-            ->map(function ($group, $linkId) {
-                $first = $group->first();
+{
+    $responses = QualityResponse::with([
+            'qualityLink.instructor:id,name,email',
+            'qualityLink.auditSession:id,name',
+            'qualityLink.semester:id,name',
+            'qualityLink.academicYear:id,name',
+            'question:id,question_text,input_type'
+        ])
+        ->whereHas('qualityLink', function($q) {
+            $q->where('is_used', true);
+        })
+        ->get()
+        ->groupBy('quality_link_id')
+        ->map(function ($group, $linkId) {
+            $first = $group->first();
 
-                return [
-                    'id' => $linkId,
-                    'instructor' => [
-                        'id' => (string)$first->qualityLink->instructor->id,
-                        'name' => $first->qualityLink->instructor->name,
-                        'email' => $first->qualityLink->instructor->email
-                    ],
-                    'academic_year' => $first->qualityLink->academicYear->name,
-                    'semester' => $first->qualityLink->semester->name,
-                    'audit_session' => $first->qualityLink->auditSession->name,
-                    'submitted_at' => $first->created_at->toIso8601String(),
-                    'responses' => $group->map(function ($response) {
-                        return [
-                            'question' => $response->question->question_text,
-                            'type' => $response->question->input_type,
-                            'answer' => $this->formatAnswer($response->answer)
-                        ];
-                    })->values()
-                ];
-            })
-            ->values();
+            return [
+                'id' => $linkId,
+                'instructor' => [
+                    'id' => (string)$first->qualityLink->instructor->id,
+                    'name' => $first->qualityLink->instructor->name,
+                    'email' => $first->qualityLink->instructor->email
+                ],
+                'academic_year' => $first->qualityLink->academicYear->name,
+                'semester' => $first->qualityLink->semester->name,
+                'audit_session' => $first->qualityLink->auditSession->name,
+                'submitted_at' => $first->created_at->toIso8601String(),
+                'responses' => $group->map(function ($response) {
+                    // Get the raw answer from database without any processing
+                    $rawAnswer = $response->getRawOriginal('answer');
 
-        return response()->json($responses);
-    }
+                    // Format based on question type
+                    $formattedAnswer = match($response->question->input_type) {
+                        'dropdown' => is_array($rawAnswer) ? json_encode($rawAnswer) : $rawAnswer,
+                        'textarea' => $rawAnswer ?? '', // Ensure empty string instead of null
+                        default => (string)$rawAnswer
+                    };
+
+                    return [
+                        'question' => $response->question->question_text,
+                        'type' => $response->question->input_type,
+                        'answer' => $formattedAnswer
+                    ];
+                })->values()
+            ];
+        })
+        ->values();
+
+    return response()->json($responses);
+}
 
 
 }
