@@ -18,6 +18,7 @@ use App\Http\Controllers\TimetableController;
 use App\Http\Controllers\QualityQuestionController;
 use App\Http\Controllers\QualityLinkController;
 use App\Http\Controllers\QualityResponseController;
+use App\Http\Controllers\EvaluatorController;
 
 
 
@@ -98,6 +99,8 @@ Route::apiResource('results', ResultController::class);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::resource('evaluators', EvaluatorController::class);
+
 
     Route::get('/choices', [ChoiceController::class,'index']);
     Route::apiResource('roles', RoleController::class);

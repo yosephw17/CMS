@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\QualityLink;
 use App\Models\AuditSession;
-use App\Models\User;
+use App\Models\Instructor;
 use App\Models\Semester;
 use App\Models\AcademicYear;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Notifications\InstructorCourseAuditNotification;
+
 
 class QualityLinkController extends Controller
 {
@@ -37,6 +39,9 @@ class QualityLinkController extends Controller
             'academic_year_id' => 'required|exists:academic_years,id',
         ]);
 
+        // Get instructor details
+        $instructor = Instructor::findOrFail($validated['instructor_id']);
+
         // Generate unique hash
         $validated['hash'] = Str::random(40);
         $validated['is_used'] = false;
@@ -44,14 +49,22 @@ class QualityLinkController extends Controller
         $link = QualityLink::create($validated);
         $url = url("/quality-form/{$link->hash}");
 
+        // Send notification to instructor
+        try {
+            $instructor->notify(new InstructorCourseAuditNotification(
+                $instructor->name,
+                $url
+            ));
+        } catch (\Exception $e) {
+            \Log::error("Failed to send quality audit notification to instructor {$instructor->id}: " . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'Quality link generated successfully',
+            'message' => 'Quality link generated and notification sent successfully',
             'link' => $link,
             'url' => $url,
         ], 201);
     }
-
     /**
      * Display the specified quality link
      */

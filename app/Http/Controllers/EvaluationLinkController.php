@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Validator;
 use App\Notifications\StudentEvaluationNotification;
 use Illuminate\Support\Facades\Notification; // Add this line
 use Illuminate\Support\Facades\DB;  // <-- Add this line
+use App\Models\Evaluator;
+use Illuminate\Support\Str;
 
 
 
@@ -19,9 +21,8 @@ class EvaluationLinkController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'instructor_id' => 'required|exists:instructors,id',
-            'students' => 'required|array',
-            'students.*.name' => 'required|string',
-            'students.*.email' => 'required|email',
+            'evaluator_ids' => 'required|array',
+            'evaluator_ids.*' => 'required|exists:evaluators,id',
             'academic_year_id' => 'required|exists:academic_years,id',
             'semester_id' => 'required|exists:semesters,id',
         ]);
@@ -31,40 +32,42 @@ class EvaluationLinkController extends Controller
         }
 
         $createdLinks = [];
-        $failedStudents = [];
+        $failedEvaluators = [];
 
-        foreach ($request->students as $student) {
+        foreach ($request->evaluator_ids as $evaluatorId) {
             try {
+                DB::beginTransaction();
+
+                // Get evaluator details
+                $evaluator = Evaluator::findOrFail($evaluatorId);
+
+                // Create evaluation link
                 $link = EvaluationLink::create([
                     'instructor_id' => $request->instructor_id,
+                    'evaluator_id' => $evaluator->id,
                     'academic_year_id' => $request->academic_year_id,
-                    'student_name' => $student['name'],
-                    'student_email' => $student['email'],
                     'semester_id' => $request->semester_id,
-                    'hash' => \Illuminate\Support\Str::random(60),
+                    'hash' => Str::random(60),
+                    'is_used' => false,
+                    // Removed type since it's already in evaluator table
                 ]);
 
                 $evaluationUrl = url("/evaluate/{$link->hash}");
+
                 $createdLinks[] = [
-                    'name' => $student['name'],
-                    'email' => $student['email'],
+                    'evaluator_id' => $evaluator->id,
+                    'evaluator_type' => $evaluator->type, // Get type from evaluator
                     'evaluation_url' => $evaluationUrl,
                 ];
 
-                // Uncomment to send emails
-                // Notification::route('mail', $student['email'])
-                //     ->notify(new StudentEvaluationNotification(
-                //         $student['name'],
-                //         $evaluationUrl,
-                //         $link->expires_at
-                //     ));
+                DB::commit();
             } catch (\Exception $e) {
-                $failedStudents[] = [
-                    'name' => $student['name'],
-                    'email' => $student['email'],
+                DB::rollBack();
+                $failedEvaluators[] = [
+                    'evaluator_id' => $evaluatorId,
                     'error' => $e->getMessage()
                 ];
-                \Log::error("Failed to create evaluation for {$student['email']}: " . $e->getMessage());
+                \Log::error("Failed to create evaluation for evaluator {$evaluatorId}: " . $e->getMessage());
             }
         }
 
@@ -72,7 +75,7 @@ class EvaluationLinkController extends Controller
             'message' => 'Evaluation links processed',
             'data' => [
                 'successful_creations' => $createdLinks,
-                'failed_creations' => $failedStudents,
+                'failed_creations' => $failedEvaluators,
             ]
         ], 201);
     }
