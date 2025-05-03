@@ -12,4 +12,26 @@ class TimeSlot extends Model
     {
         return $this->belongsTo(Day::class, 'day_id');
     }
+
+    public function toggleBreak()
+    {
+        $this->update(['is_break' => !$this->is_break]);
+        return $this->is_break;
+    }
+
+    /**
+     * Scope for break time slots
+     */
+    public function scopeBreaks($query)
+    {
+        return $query->where('is_break', true);
+    }
+
+    /**
+     * Scope for non-break time slots
+     */
+    public function scopeNotBreaks($query)
+    {
+        return $query->where('is_break', false);
+    }
 }
