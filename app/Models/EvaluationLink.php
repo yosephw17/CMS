@@ -23,9 +23,9 @@ class EvaluationLink extends Model
     }
 
     public function evaluator()
-    {
-        return $this->belongsTo(Evaluator::class);
-    }
+{
+    return $this->belongsTo(Evaluator::class, 'evaluator_id', 'id');
+}
 
     public function responses()
     {

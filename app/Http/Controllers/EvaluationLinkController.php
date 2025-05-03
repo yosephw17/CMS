@@ -113,7 +113,7 @@ public function groupedEvaluationLinks()
 public function getLink()
 {
     $evaluations = evaluationLink::query()
-        ->with(['instructor'])
+        ->with(['instructor', 'academicYear', 'semester','evaluator'])
         ->get();
 
 

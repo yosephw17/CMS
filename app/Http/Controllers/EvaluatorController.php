@@ -1,50 +1,83 @@
 <?php
-// app/Http/Controllers/EvaluatorController.php
+
 namespace App\Http\Controllers;
 
 use App\Models\Evaluator;
-use App\Http\Requests\StoreEvaluatorRequest;
-use App\Http\Requests\UpdateEvaluatorRequest;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class EvaluatorController extends Controller
 {
-    public function index()
+    /**
+     * Get all evaluators
+     */
+    public function index(): JsonResponse
     {
-        return view('evaluators.index', [
-            'evaluators' => Evaluator::latest()->paginate(10)
+        $evaluators = Evaluator::all();
+        return response()->json([
+            'success' => true,
+            'data' => $evaluators
         ]);
     }
 
-    public function create()
+    /**
+     * Create new evaluator
+     */
+    public function store(Request $request): JsonResponse
     {
-        return view('evaluators.create');
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:evaluators,email',
+            'type' => 'required|string|max:255'
+        ]);
+
+        $evaluator = Evaluator::create($validated);
+        return response()->json([
+            'success' => true,
+            'message' => 'Evaluator created successfully',
+            'data' => $evaluator
+        ], 201);
     }
 
-    public function store(StoreEvaluatorRequest $request)
+    /**
+     * Get single evaluator
+     */
+    public function show(Evaluator $evaluator): JsonResponse
     {
-        Evaluator::create($request->validated());
-        return redirect()->route('evaluators.index')->with('success', 'Evaluator created!');
+        return response()->json([
+            'success' => true,
+            'data' => $evaluator
+        ]);
     }
 
-    public function show(Evaluator $evaluator)
+    /**
+     * Update evaluator
+     */
+    public function update(Request $request, Evaluator $evaluator): JsonResponse
     {
-        return view('evaluators.show', compact('evaluator'));
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:evaluators,email,'.$evaluator->id,
+            'type' => 'sometimes|string|max:255'
+        ]);
+
+        $evaluator->update($validated);
+        return response()->json([
+            'success' => true,
+            'message' => 'Evaluator updated successfully',
+            'data' => $evaluator
+        ]);
     }
 
-    public function edit(Evaluator $evaluator)
-    {
-        return view('evaluators.edit', compact('evaluator'));
-    }
-
-    public function update(UpdateEvaluatorRequest $request, Evaluator $evaluator)
-    {
-        $evaluator->update($request->validated());
-        return redirect()->route('evaluators.index')->with('success', 'Evaluator updated!');
-    }
-
-    public function destroy(Evaluator $evaluator)
+    /**
+     * Delete evaluator
+     */
+    public function destroy(Evaluator $evaluator): JsonResponse
     {
         $evaluator->delete();
-        return redirect()->route('evaluators.index')->with('success', 'Evaluator deleted!');
+        return response()->json([
+            'success' => true,
+            'message' => 'Evaluator deleted successfully'
+        ]);
     }
 }
