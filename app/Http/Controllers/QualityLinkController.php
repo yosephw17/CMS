@@ -10,6 +10,7 @@ use App\Models\AcademicYear;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use App\Notifications\InstructorCourseAuditNotification;
 
 
@@ -34,35 +35,65 @@ class QualityLinkController extends Controller
     {
         $validated = $request->validate([
             'audit_session_id' => 'required|exists:audit_sessions,id',
-            'instructor_id' => 'required|exists:instructors,id',
+            'instructor_ids' => 'required|array',  // Changed to accept array of instructor IDs
+            'instructor_ids.*' => 'required|exists:instructors,id',
             'semester_id' => 'required|exists:semesters,id',
             'academic_year_id' => 'required|exists:academic_years,id',
         ]);
 
-        // Get instructor details
-        $instructor = Instructor::findOrFail($validated['instructor_id']);
+        $createdLinks = [];
+        $failedInstructors = [];
 
-        // Generate unique hash
-        $validated['hash'] = Str::random(40);
-        $validated['is_used'] = false;
+        foreach ($validated['instructor_ids'] as $instructorId) {
+            try {
+                DB::beginTransaction();
 
-        $link = QualityLink::create($validated);
-        $url = url("/quality-form/{$link->hash}");
+                $instructor = Instructor::findOrFail($instructorId);
 
-        // Send notification to instructor
-        try {
-            $instructor->notify(new InstructorCourseAuditNotification(
-                $instructor->name,
-                $url
-            ));
-        } catch (\Exception $e) {
-            \Log::error("Failed to send quality audit notification to instructor {$instructor->id}: " . $e->getMessage());
+                // Generate unique hash
+                $linkData = [
+                    'audit_session_id' => $validated['audit_session_id'],
+                    'instructor_id' => $instructorId,
+                    'semester_id' => $validated['semester_id'],
+                    'academic_year_id' => $validated['academic_year_id'],
+                    'hash' => Str::random(40),
+                    'is_used' => false,
+                ];
+                $frontendUrl = env('FRONTEND_URL');
+
+
+                $link = QualityLink::create($linkData);
+                $url = "{$frontendUrl}/#/quality-assurance-form/{$link->hash}";
+
+                // Send notification to instructor
+                $instructor->notify(new InstructorCourseAuditNotification(
+                    $instructor->name,
+                    $url
+                ));
+
+                $createdLinks[] = [
+                    'instructor_id' => $instructorId,
+                    'link' => $link,
+                    'url' => $url,
+                ];
+
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                $failedInstructors[] = [
+                    'instructor_id' => $instructorId,
+                    'error' => $e->getMessage()
+                ];
+                \Log::error("Failed to create quality link for instructor {$instructorId}: " . $e->getMessage());
+            }
         }
 
         return response()->json([
-            'message' => 'Quality link generated and notification sent successfully',
-            'link' => $link,
-            'url' => $url,
+            'message' => 'Quality links processed',
+            'data' => [
+                'successful_creations' => $createdLinks,
+                'failed_creations' => $failedInstructors,
+            ]
         ], 201);
     }
     /**
