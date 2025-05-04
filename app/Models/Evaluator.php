@@ -5,10 +5,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Notifications\Notifiable;
+
 
 class Evaluator extends Model
 {
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     public const TYPE_STUDENT = 'student';
     public const TYPE_INSTRUCTOR = 'instructor';
