@@ -34,6 +34,14 @@ class ScheduleResult extends Model
         {
             return $this->belongsTo(Schedule::class);
         }
+        public function timeSlots()
+        {
+            return $this->belongsToMany(TimeSlot::class, 'schedule_time_slot');
+        }
+        public function scheduleTimeSlots()
+{
+    return $this->hasMany(ScheduleTimeSlot::class, 'schedule_result_id', 'id');
+}
 
 }
     

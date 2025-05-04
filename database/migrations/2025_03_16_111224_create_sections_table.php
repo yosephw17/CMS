@@ -16,7 +16,9 @@ return new class extends Migration
             $table->string('name');
             $table->foreignId('year_id')->constrained('years')->onDelete('cascade');
             $table->unsignedInteger('number_of_students')->default(0); // ← Add this line
-
+            $table->unsignedBigInteger('department_id');
+            $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');
+     
             $table->timestamps();
         });
     }

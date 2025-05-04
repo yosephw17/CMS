@@ -17,8 +17,12 @@ return new class extends Migration
             $table->foreignId('semester_id')->constrained('semesters')->onDelete('cascade'); 
             $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
             $table->foreignId('department_id')->constrained('departments')->onDelete('cascade');
-
+            $table->unsignedBigInteger('preferred_lecture_room_id')->nullable();
+            $table->unsignedBigInteger('preferred_lab_room_id')->nullable();
             $table->timestamps();
+
+            $table->foreign('preferred_lecture_room_id')->references('id')->on('rooms');
+    $table->foreign('preferred_lab_room_id')->references('id')->on('rooms');
         });
     }
 

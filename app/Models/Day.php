@@ -2,14 +2,24 @@
 
 namespace App\Models;
 
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+
 use Illuminate\Database\Eloquent\Model;
 
 class Day extends Model
 {
-    protected $fillable = ['name'];
 
-    public function timeSlots()
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+    ];
+    public function timeSlots(): HasMany
     {
-        return $this->hasMany(TimeSlot::class, 'day_id');
+        return $this->hasMany(TimeSlot::class);
     }
+
 }
+

@@ -46,8 +46,9 @@ use App\Models\EducationalBackground;
 
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ScheduleController;
-use App\Http\Controllers\GuestInstructorController;
 
+use App\Http\Controllers\GuestInstructorController;
+use App\Http\Controllers\RoomController;
 
 
 /*
@@ -147,10 +148,16 @@ Route::get('/academic-years', [AcademicYearController::class, 'index']);
     Route::post('/assignments/{id}/assign-courses', [AssignmentController::class, 'assignCourses']);
     Route::get('/assignments/{id}', [AssignmentController::class, 'show'])->name('assignments.show');
     Route::put('/assignments/edit/{id}', [AssignmentController::class, 'assignmentUpdate']);
-
+    
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('sections', SectionController::class);
     Route::apiResource('schedules', ScheduleController::class);
     Route::apiResource('guest-instructors', GuestInstructorController::class);
-
+    
+    Route::post('/schedules/generate', [ScheduleController::class, 'generateSchedule']);
+    Route::get('/schedules/{scheduleId}/results', [ScheduleController::class, 'getScheduleResults']);
+    Route::get('/time_slots', [ScheduleController::class, 'getTimeSlots']);
+Route::get('/days', [ScheduleController::class, 'getDays']);
+Route::get('/rooms', [RoomController::class, 'index']);
+Route::patch('/year-semester-course/{id}', [YearSemesterCourseController::class, 'updatePreferredRooms']);
 });

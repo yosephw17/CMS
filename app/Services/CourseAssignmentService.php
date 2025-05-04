@@ -39,13 +39,17 @@ class CourseAssignmentService
     
             // Fetch parameters and courses for this semester and department
             $parameters = Parameter::pluck('points', 'name');
-            $yearSemesterCourses = YearSemesterCourse::with('course')
+            $yearSemesterCourses = YearSemesterCourse::with(['course', 'year' => function($query) use ($department_id) {
+                    $query->where('department_id', $department_id);
+                }])
                 ->where('semester_id', $semester_id)
                 ->where('department_id', $department_id)
                 ->get()
                 ->filter(function($yearSemesterCourse) {
-                    // Only include courses that have a department_id
-                    return !is_null($yearSemesterCourse->course->department_id);
+                    // Only include courses that have matching department_ids
+                    return !is_null($yearSemesterCourse->course) && 
+                           !is_null($yearSemesterCourse->year) &&
+                           $yearSemesterCourse->course->department_id == $yearSemesterCourse->year->department_id;
                 });
             
             Log::info("Fetched parameters and filtered year_semester_courses:", [
@@ -56,7 +60,7 @@ class CourseAssignmentService
             if ($yearSemesterCourses->isEmpty()) {
                 DB::commit();
                 return response()->json([
-                    'message' => 'No courses with department assignments found for this semester and department',
+                    'message' => 'No courses with matching department assignments found for this semester and department',
                     'assigned_results' => [],
                     'all_scores' => [],
                     'assignment_counts' => [],
@@ -90,12 +94,12 @@ class CourseAssignmentService
     
                 foreach ($yearSemesterCourses as $yearSemesterCourse) {
                     $course = $yearSemesterCourse->course;
+                    $year = $yearSemesterCourse->year;
                     
-                    // Skip if course doesn't have a department (though we already filtered these out)
-                    if (is_null($course->department_id)) {
-                        continue;
-                    }
-                    
+                 // Skip if course or year doesn't have matching department
+if (is_null($course->department_id)) {
+    continue;
+}
                     $score = 0;
     
                     $choice = $instructor->choices->where('year_semester_course_id', $yearSemesterCourse->id)
@@ -180,9 +184,11 @@ class CourseAssignmentService
             foreach ($sortedScores as $instructorData) {
                 $yearSemesterCourse = YearSemesterCourse::find($instructorData['year_semester_course_id']);
                 $course = $yearSemesterCourse->course;
+                $year = $yearSemesterCourse->year;
                 
-                // Additional check to ensure we don't process courses without department
-                if (is_null($course->department_id)) {
+                // Additional check to ensure we don't process courses without matching departments
+                if (is_null($course->department_id) || is_null($year->department_id) || 
+                    $course->department_id != $year->department_id) {
                     continue;
                 }
                 
@@ -202,6 +208,7 @@ class CourseAssignmentService
                     'Score' => $instructorData['score'],
                     'Choice Rank' => $instructorData['choice_rank'],
                     'Course' => $course->name,
+                    'Year' => $year->name,
                 ];
     
                 // Check if already assigned
@@ -257,6 +264,7 @@ class CourseAssignmentService
     
                     Log::info("Assignment decision:", [
                         'course' => $course->name,
+                        'year' => $year->name,
                         'instructor' => $instructor->name,
                         'base_assignments' => $baseAssignments,
                         'sections_count' => $sectionsCount,
