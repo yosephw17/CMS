@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
 
 class InstructorTimeSlot extends Model
 {
+
     use HasFactory;
     protected $table = 'instructor_time_slot';
     protected $fillable = [
@@ -29,3 +31,6 @@ class InstructorTimeSlot extends Model
         return true;
     }
 }
+
+}
+

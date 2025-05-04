@@ -24,6 +24,10 @@ class Instructor extends Model
     {
         return $this->belongsTo(InstructorRole::class);
     }
+    public function isLabAssistant()
+    {
+        return $this->role_id === InstructorRole::lab_assistance;
+    }
     public function department()
     {
         return $this->belongsTo(Department::class);
