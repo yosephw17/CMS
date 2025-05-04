@@ -34,4 +34,15 @@ class Course extends Model
     {
         return $this->belongsToMany(Instructor::class,'instructor_courses','instructor_id')->withPivot('number_of_semesters','is_recent'); 
     }
+    public function lectureRoomPreference()
+    {
+        return $this->hasOne(YearSemesterCourse::class, 'course_id')
+                   ->select('id', 'course_id', 'preferred_lecture_room_id');
+    }
+
+    public function labRoomPreference()
+    {
+        return $this->hasOne(YearSemesterCourse::class, 'course_id')
+                   ->select('id', 'course_id', 'preferred_lab_room_id');
+    }
 }

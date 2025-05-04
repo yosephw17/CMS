@@ -16,4 +16,10 @@ class Schedule extends Model
     {
         return $this->hasMany(ScheduleResult::class);
     }
+
+    public function results()
+    {
+        return $this->hasMany(ScheduleResult::class);
+    }
+    
 }

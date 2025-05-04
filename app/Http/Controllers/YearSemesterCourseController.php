@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\YearSemesterCourse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class YearSemesterCourseController extends Controller
 {
@@ -41,10 +42,31 @@ public function index(Request $request)
     {
         //
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
+    public function updatePreferredRooms(Request $request, $id)
+    {
+        Log::info("Update Preferred Rooms Request", $request->all());
+    
+        $validated = $request->validate([
+            'preferred_lecture_room_id' => 'nullable|exists:rooms,id',
+            'preferred_lab_room_id' => 'nullable|exists:rooms,id'
+        ]);
+    
+        $course = YearSemesterCourse::findOrFail($id);
+    
+        if ($request->has('preferred_lecture_room_id')) {
+            $course->preferred_lecture_room_id = $validated['preferred_lecture_room_id'];
+        }
+    
+        if ($request->has('preferred_lab_room_id')) {
+            $course->preferred_lab_room_id = $validated['preferred_lab_room_id'];
+        }
+    
+        $course->save();
+    
+        return response()->json($request);
+    }
+    
+ 
     public function store(Request $request)
     {
         $request->validate([
