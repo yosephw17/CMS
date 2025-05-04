@@ -147,7 +147,7 @@ class QualityResponseController extends Controller
             ], 404);
         }
 
-        // Case 2: Link has been used (is_used = true)
+        // Case 2: Link has been used
         if ($link->is_used) {
             return response()->json([
                 'status' => 'used',
@@ -162,31 +162,40 @@ class QualityResponseController extends Controller
             ], 200);
         }
 
-
-
-        // Case 4: Valid unused link
+        // Case 3: Valid unused link
         return response()->json([
             'status' => 'active',
             'data' => [
+                'instructor' => $link->instructor->only(['id', 'name', 'email']),
+                'session' => $link->auditSession->only(['id', 'name']),
+                'academic_year' => $link->academicYear->only(['id', 'name']),
+                'semester' => $link->semester->only(['id', 'name']),
+                'questions' => QualityQuestion::orderBy('id')->get()->map(function ($question) {
+                    $options = null;
 
-                    'instructor' => $link->instructor->only(['id', 'name', 'email']),
-                    'session' => $link->auditSession->only(['id', 'name']),
-                    'academic_year' => $link->academicYear->only(['id', 'name']),
-                    'semester' => $link->semester->only(['id', 'name']),
+                    if (in_array($question->input_type, ['dropdown', 'checkbox'])) {
+                        try {
+                            $options = is_string($question->options)
+                                ? json_decode($question->options, true)
+                                : (is_array($question->options) ? $question->options : []);
+                        } catch (\Exception $e) {
+                            $options = [];
+                            \Log::error("Failed to decode options for question {$question->id}: " . $e->getMessage());
+                        }
+                    }
 
-                'questions' => QualityQuestion::orderBy('id')->get()->map(function($question) {
                     return [
                         'id' => $question->id,
                         'text' => $question->question_text,
                         'type' => $question->input_type,
-                        'options' => $question->input_type === 'dropdown' || $question->input_type === 'checkbox'
-                            ? json_decode($question->options)
-                            : null
+                        'options' => $options
                     ];
                 })
             ]
         ]);
     }
+
+
 
 
     public function getAllResponses()
