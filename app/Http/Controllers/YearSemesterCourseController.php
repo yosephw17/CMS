@@ -68,17 +68,39 @@ public function index(Request $request)
     
  
     public function store(Request $request)
-    {
+    { 
+        
+
         $request->validate([
             'year_id' => 'required|exists:years,id',
             'semester_id' => 'required|exists:semesters,id',
             'course_id' => 'required|exists:courses,id',
-            'department_id' => 'required|exists:departments,id'
+            'department_id' => 'required|exists:departments,id',
+            'stream_id' => [
+                'nullable',
+                'exists:streams,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value) {
+                        $stream = \App\Models\Stream::where('id', $value)
+                            ->where('department_id', $request->department_id)
+                            ->first();
+                        if (!$stream) {
+                            $fail('The selected stream is not valid for this department.');
+                        }
+                        $yearOrder = \App\Models\Year::where('id', $request->year_id)->value('id');
+                        $streamYearOrder = $stream->year_id;
+                        if ($yearOrder < $streamYearOrder ||
+                            ($yearOrder == $streamYearOrder && $request->semester_id < $stream->semester_id)) {
+                            $fail('The selected stream is not active for this year and semester.');
+                        }
+                    }
+                },
+            ],
         ]);
 
         $yearSemesterCourse = YearSemesterCourse::create($request->all());
-
-        return response()->json($yearSemesterCourse->load(['year', 'semester', 'course','department']), 201);
+        Log::info("Update Preferred Rooms Request", ["year",$yearSemesterCourse]);
+        return response()->json($yearSemesterCourse->load(['year', 'semester', 'course','department', 'stream']), 201);
     }
 //     public function removeCourse(Request $request, $courseId)
 // {
@@ -126,7 +148,7 @@ public function index(Request $request)
     public function update(Request $request, string $id)
     {
         $yearSemesterCourse = YearSemesterCourse::findOrFail($id);
-        $yearSemesterCourse->update($request->only(['year_id', 'semester_id', 'course_id']));
+        $yearSemesterCourse->update($request->only(['year_id', 'semester_id', 'course_id','stream_id']));
 
         return response()->json($yearSemesterCourse->load(['year', 'semester', 'course']));
     }

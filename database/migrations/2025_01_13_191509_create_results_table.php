@@ -20,6 +20,8 @@ return new class extends Migration
             $table->integer('point')->default(0);
             $table->boolean('is_assigned')->default(false);
             $table->longText('reason')->nullable();
+            $table->foreignId('stream_id')->nullable()->constrained('streams')->onDelete('cascade');
+
             $table->timestamps();
 
             $table->foreign('instructor_id')->references('id')->on('instructors')->onDelete('cascade');

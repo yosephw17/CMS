@@ -16,7 +16,10 @@ return new class extends Migration
             $table->foreignId('year_id')->constrained('years')->onDelete('cascade'); 
             $table->foreignId('semester_id')->constrained('semesters')->onDelete('cascade'); 
             $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+
             $table->foreignId('department_id')->constrained('departments')->onDelete('cascade');
+            $table->foreignId('stream_id')->nullable()->constrained('streams')->onDelete('cascade');
+
             $table->unsignedBigInteger('preferred_lecture_room_id')->nullable();
             $table->unsignedBigInteger('preferred_lab_room_id')->nullable();
             $table->timestamps();

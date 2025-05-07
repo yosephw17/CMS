@@ -11,7 +11,15 @@ class Schedule extends Model
     protected $fillable = [
         'year',
         'semester_id',
-    ];  
+    ]; 
+    public function semester()
+    {
+        return $this->belongsTo(Semester::class);
+    }
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    } 
     public function scheduleResults()
     {
         return $this->hasMany(ScheduleResult::class);

@@ -22,4 +22,8 @@ class Year extends Model
     {
         return $this->hasMany(Section::class);
     }
+    public function streamStarts()
+{
+    return $this->hasMany(StreamStart::class);
+}
 }

@@ -11,7 +11,8 @@ class Assignment extends Model
     protected $fillable = [
         'year',
         'semester_id',
-        'department_id'
+        'department_id',
+        'stream_id'
 
     ];
     public function results()

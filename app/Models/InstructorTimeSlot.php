@@ -32,5 +32,5 @@ class InstructorTimeSlot extends Model
     }
 }
 
-}
+
 

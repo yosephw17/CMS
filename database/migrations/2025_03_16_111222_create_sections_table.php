@@ -18,7 +18,8 @@ return new class extends Migration
             $table->unsignedInteger('number_of_students')->default(0); // ← Add this line
             $table->unsignedBigInteger('department_id');
             $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');
-     
+            $table->foreignId('stream_id')->nullable()->constrained()->onDelete('cascade'); // NULL for non-stream departments
+
             $table->timestamps();
         });
     }
