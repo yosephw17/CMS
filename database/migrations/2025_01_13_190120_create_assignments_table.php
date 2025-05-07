@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('assignments', function (Blueprint $table) {
             $table->id();
             $table->string('year');
-            $table->integer('semester');
+            $table->foreignId('semester_id')->constrained('semesters')->onDelete('cascade'); 
             $table->unsignedBigInteger('department_id');
+            $table->foreignId('stream_id')->nullable()->constrained()->onDelete('cascade'); // NULL for non-stream departments
 
             $table->timestamps();
             $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');

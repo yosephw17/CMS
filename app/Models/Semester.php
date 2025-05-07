@@ -14,4 +14,8 @@ class Semester extends Model
     {
         return $this->hasMany(YearSemesterCourse::class);
     }
+    public function streamStarts()
+{
+    return $this->hasMany(StreamStart::class);
+}
 }

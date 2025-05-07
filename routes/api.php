@@ -49,6 +49,7 @@ use App\Http\Controllers\ScheduleController;
 
 use App\Http\Controllers\GuestInstructorController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\StreamController;
 
 
 /*
@@ -157,7 +158,8 @@ Route::get('/academic-years', [AcademicYearController::class, 'index']);
     Route::post('/schedules/generate', [ScheduleController::class, 'generateSchedule']);
     Route::get('/schedules/{scheduleId}/results', [ScheduleController::class, 'getScheduleResults']);
     Route::get('/time_slots', [ScheduleController::class, 'getTimeSlots']);
-Route::get('/days', [ScheduleController::class, 'getDays']);
-Route::get('/rooms', [RoomController::class, 'index']);
-Route::patch('/year-semester-course/{id}', [YearSemesterCourseController::class, 'updatePreferredRooms']);
+    Route::get('/days', [ScheduleController::class, 'getDays']);
+    Route::get('/rooms', [RoomController::class, 'index']);
+    Route::patch('/year-semester-course/{id}', [YearSemesterCourseController::class, 'updatePreferredRooms']);
+    Route::apiResource('streams', StreamController::class);
 });

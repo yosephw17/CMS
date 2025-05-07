@@ -33,7 +33,7 @@ class TimeSlot extends Model
         return $this->hasMany(ScheduleTimeSlot::class, 'time_slot_id');
     }
 
-}
+
 
 
     public function toggleBreak()

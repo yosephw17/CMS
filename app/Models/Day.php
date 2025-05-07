@@ -16,7 +16,7 @@ class Day extends Model
     protected $fillable = [
         'name',
     ];
-    public function timeSlots(): HasMany
+    public function timeSlots()
     {
         return $this->hasMany(TimeSlot::class);
     }

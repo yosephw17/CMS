@@ -10,4 +10,9 @@ class Department extends Model
     use HasFactory;
     
     protected $fillable=['name'];
+    
+    public function streamStarts()
+{
+    return $this->hasMany(StreamStart::class);
+}
 }

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class YearSemesterCourse extends Model
 {
     use HasFactory;
-    protected $fillable = ['year_id', 'semester_id', 'course_id','department_id'];
+    protected $fillable = ['year_id', 'semester_id', 'course_id','department_id','semester_id','stream_id'];
 
     public function year()
     {
@@ -39,4 +39,15 @@ class YearSemesterCourse extends Model
     {
         return $this->belongsTo(Room::class, 'preferred_lab_room_id');
     }
+    public function section()
+     { 
+        return $this->belongsTo(Section::class); 
+     }
+
+     
+    public function stream()
+    {
+        return $this->belongsTo(Stream::class);
+    }
+
 }

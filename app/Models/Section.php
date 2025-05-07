@@ -13,4 +13,18 @@ class Section extends Model
     {
         return $this->belongsTo(Year::class);
     }
+    public function department() 
+    {
+         return $this->belongsTo(Department::class); 
+    }
+
+    public function stream() 
+    {
+         return $this->belongsTo(Stream::class); 
+    }
+    public function courses() 
+    {
+         return $this->hasMany(YearSemesterCourse::class);
+    }
+
 }
