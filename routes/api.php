@@ -19,6 +19,7 @@ use App\Http\Controllers\QualityQuestionController;
 use App\Http\Controllers\QualityLinkController;
 use App\Http\Controllers\QualityResponseController;
 use App\Http\Controllers\EvaluatorController;
+use App\Http\Controllers\AuditSessionController;
 
 
 use App\Http\Controllers\InstructorTimeSlotController;
@@ -75,6 +76,7 @@ Route::prefix('quality-form')->group(function () {
     Route::get('/{hash}', [QualityResponseController::class, 'getForm']);
     Route::post('/{hash}', [QualityResponseController::class, 'submit']);
 });
+Route::get('/audit-sessions', [AuditSessionController::class, 'index']);
 Route::get('/get-all-quality-responses', [QualityResponseController::class, 'getAllResponses']);
 
 Route::post('/timetable/generate', [TimetableController::class, 'generate']);
@@ -92,7 +94,12 @@ Route::post('/request', [RequestController::class,'store']);
 Route::post('/send-message', [MentorController::class,'store']);
 Route::get('/choice-assignment/{id}', [ChoiceController::class,'fetchAssignmentChoice']);
 Route::get('/quality-questions', [QualityQuestionController::class,'index']);
+Route::post('/quality-questions', [QualityQuestionController::class,'store']);
+Route::put('quality-questions/{qualityQuestion}', [QualityQuestionController::class, 'update']);
+Route::delete('quality-questions/{qualityQuestion}', [QualityQuestionController::class, 'destroy']);
+
 Route::post('/quality-links', [QualityLinkController::class,'store']);
+Route::get('/quality-links',[QualityLinkController::class,'index']);
 Route::post('/quality-responses', [QualityResponseController::class, 'store']);
 Route::get('/quality-responses/{hash}', [QualityResponseController::class, 'show']);
 Route::get('/quality-responses/status/{hash}', [QualityResponseController::class, 'checkLinkStatus']);
@@ -149,12 +156,12 @@ Route::get('/academic-years', [AcademicYearController::class, 'index']);
     Route::post('/assignments/{id}/assign-courses', [AssignmentController::class, 'assignCourses']);
     Route::get('/assignments/{id}', [AssignmentController::class, 'show'])->name('assignments.show');
     Route::put('/assignments/edit/{id}', [AssignmentController::class, 'assignmentUpdate']);
-    
+
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('sections', SectionController::class);
     Route::apiResource('schedules', ScheduleController::class);
     Route::apiResource('guest-instructors', GuestInstructorController::class);
-    
+
     Route::post('/schedules/generate', [ScheduleController::class, 'generateSchedule']);
     Route::get('/schedules/{scheduleId}/results', [ScheduleController::class, 'getScheduleResults']);
     Route::get('/time_slots', [ScheduleController::class, 'getTimeSlots']);

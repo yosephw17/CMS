@@ -11,6 +11,12 @@ class QualityQuestionSeeder extends Seeder
     {
         $questions = [
             [
+                'question_text' => 'Course Name',
+                'input_type' => 'text',
+                'options' => null
+            ],
+
+            [
                 'question_text' => 'Total Number of Chapters in the Course',
                 'input_type' => 'number',
                 'options' => null

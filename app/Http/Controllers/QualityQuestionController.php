@@ -24,7 +24,7 @@ class QualityQuestionController extends Controller
     {
         $validated = $request->validate([
             'question_text' => 'required|string|max:1000',
-            'input_type' => ['required', Rule::in(['number', 'dropdown', 'textarea', 'checkbox'])],
+            'input_type' => ['required', Rule::in(['text','number', 'dropdown', 'textarea', 'checkbox'])],
             'options' => 'nullable|array' // Required if input_type is dropdown/checkbox
         ]);
 
@@ -57,15 +57,8 @@ class QualityQuestionController extends Controller
         $validated = $request->validate([
             'question_text' => 'sometimes|string|max:1000',
             'input_type' => ['sometimes', Rule::in(['number', 'dropdown', 'textarea', 'checkbox'])],
-            'options' => 'nullable|array'
+            'options' => 'nullable|array',
         ]);
-
-        // Handle options update
-        if (array_key_exists('options', $validated)) {
-            $validated['options'] = $validated['options']
-                ? json_encode($validated['options'])
-                : null;
-        }
 
         $qualityQuestion->update($validated);
 
@@ -74,6 +67,7 @@ class QualityQuestionController extends Controller
             'question' => $qualityQuestion->fresh()
         ]);
     }
+
 
     /**
      * Remove the specified question.
