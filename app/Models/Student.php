@@ -17,7 +17,7 @@ protected $fillable = [
     'full_name',
     'email',
     'phone_number',
-    'department',
+    'department_id',
     'assigned_mentor_id',
     'sex',
     'hosting_company',
