@@ -20,6 +20,7 @@ use App\Http\Controllers\QualityLinkController;
 use App\Http\Controllers\QualityResponseController;
 use App\Http\Controllers\EvaluatorController;
 use App\Http\Controllers\AuditSessionController;
+use App\Http\Controllers\StudentController;
 
 
 use App\Http\Controllers\InstructorTimeSlotController;
@@ -102,12 +103,13 @@ Route::get('/quality-links',[QualityLinkController::class,'index']);
 Route::post('/quality-responses', [QualityResponseController::class, 'store']);
 Route::get('/quality-responses/{hash}', [QualityResponseController::class, 'show']);
 Route::get('/quality-responses/status/{hash}', [QualityResponseController::class, 'checkLinkStatus']);
-
 Route::apiResource('results', ResultController::class);
+
 // Protected Routes that require Sanctum authentication
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+
     Route::resource('evaluators', EvaluatorController::class);
 
 
@@ -130,6 +132,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/assign-mentors', [MentorshipController::class, 'assignMentors']);
 Route::put('/assign-mentors/{id}', [MentorshipController::class, 'update']);
 Route::get('/students', [MentorshipController::class, 'index']);
+Route::post('/students', [StudentController::class, 'store']);
 
 // Route::apiResource('academic-years', AcademicYearController::class);
 Route::get('/academic-years', [AcademicYearController::class, 'index']);

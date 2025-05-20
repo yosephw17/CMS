@@ -14,13 +14,11 @@ return new class extends Migration
         Schema::create('assignments', function (Blueprint $table) {
             $table->id();
             $table->string('year');
-            $table->integer('semester');
-            $table->unsignedBigInteger('department_id');
-
+            $table->foreignId('semester_id')->constrained('semesters')->onDelete('cascade');
+            $table->foreignId('department_id')->constrained('departments')->onDelete('cascade');
             $table->timestamps();
-            $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');
-
         });
+
     }
 
     /**
