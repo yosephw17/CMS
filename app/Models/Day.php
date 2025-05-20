@@ -15,6 +15,7 @@ class Day extends Model
     ];
 
     public function timeSlots(): HasMany
+
     {
         return $this->hasMany(TimeSlot::class);
     }

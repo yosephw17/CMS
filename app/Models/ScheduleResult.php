@@ -10,7 +10,7 @@ class ScheduleResult extends Model
     use HasFactory;
     protected $fillable=[
 
-     'instructor_id','course_id','section_id','schedule_id','room_id'
+     'instructor_id','course_id','section_id','schedule_id','room_id','stream_id',
       ];
          public function course()
          {

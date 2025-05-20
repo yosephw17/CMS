@@ -17,6 +17,8 @@ return new class extends Migration
             $table->unsignedBigInteger('schedule_id');
             $table->unsignedBigInteger('section_id');
             $table->unsignedBigInteger('room_id');
+            $table->foreignId('stream_id')->nullable()->constrained()->onDelete('cascade'); // NULL for non-stream departments
+
             $table->timestamps();
 
             $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');

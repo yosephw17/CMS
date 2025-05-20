@@ -10,7 +10,7 @@ class Result extends Model
     use HasFactory;
     protected $fillable=[
 
-    'point','is_assigned','instructor_id','course_id','assignment_id',
+    'point','is_assigned','instructor_id','course_id','assignment_id','stream_id'
     ];
     public function course()
     {
@@ -24,5 +24,10 @@ class Result extends Model
     public function assignment()
     {
         return $this->belongsTo(Assignment::class);
+    }
+    
+    public function stream()
+    {
+        return $this->belongsTo(Stream::class);
     }
 }

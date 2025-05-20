@@ -8,6 +8,7 @@ use App\Models\Parameter;
 use App\Models\Result;
 use App\Models\Assignment;
 use App\Models\Section;
+use App\Models\Stream;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,15 +21,21 @@ class CourseAssignmentService
         try {
             Log::info("Starting course assignment process for assignment ID: {$assignment_id}");
             
-            // Fetch the assignment to get semester_id and department_id
+            // Fetch the assignment to get semester_id, department_id, and year
             $assignment = Assignment::findOrFail($assignment_id);
             $semester_id = $assignment->semester_id;
             $department_id = $assignment->department_id;
+            $year = $assignment->year;
             
             Log::info("Assignment details:", [
+                'year' => $year,
                 'semester_id' => $semester_id,
-                'department_id' => $department_id
+                'department_id' => $department_id,
             ]);
+
+            // Fetch streams to validate course assignments
+            $streams = Stream::where('department_id', $department_id)->get()->keyBy('id');
+            Log::info("Fetched streams:", ['count' => $streams->count()]);
 
             // Fetch instructors with their related data (only from the same department)
             $instructors = Instructor::with('role', 'choices', 'professionalExperiences', 'researches', 'educationalBackgrounds', 'courses')
@@ -39,13 +46,41 @@ class CourseAssignmentService
     
             // Fetch parameters and courses for this semester and department
             $parameters = Parameter::pluck('points', 'name');
-            $yearSemesterCourses = YearSemesterCourse::with(['course', 'year' => function($query) use ($department_id) {
-                    $query->where('department_id', $department_id);
-                }])
+            $yearSemesterCourses = YearSemesterCourse::with([
+                    'course',
+                    'year' => function($query) use ($department_id) {
+                        $query->where('department_id', $department_id);
+                    },
+                    'stream'
+                ])
                 ->where('semester_id', $semester_id)
                 ->where('department_id', $department_id)
                 ->get()
-                ->filter(function($yearSemesterCourse) {
+                ->filter(function($yearSemesterCourse) use ($streams, $year, $semester_id) {
+                    // Validate stream applicability
+                    if ($yearSemesterCourse->stream_id) {
+                        $stream = $streams->get($yearSemesterCourse->stream_id);
+                        if (!$stream) {
+                            Log::warning('Course with invalid stream_id', [
+                                'course_id' => $yearSemesterCourse->course_id,
+                                'stream_id' => $yearSemesterCourse->stream_id,
+                            ]);
+                            return false;
+                        }
+                        $yearOrder = DB::table('years')->where('id', $yearSemesterCourse->year_id)->value('id');
+                        $streamYearOrder = $stream->year_id;
+                        if ($yearOrder < $streamYearOrder ||
+                            ($yearOrder == $streamYearOrder && $semester_id < $stream->semester_id)) {
+                            Log::warning('Stream not active for this year/semester', [
+                                'course_id' => $yearSemesterCourse->course_id,
+                                'stream_id' => $yearSemesterCourse->stream_id,
+                                'stream_name' => $stream->name,
+                                'year_id' => $yearSemesterCourse->year_id,
+                                'semester_id' => $semester_id,
+                            ]);
+                            return false;
+                        }
+                    }
                     // Only include courses that have matching department_ids
                     return !is_null($yearSemesterCourse->course) && 
                            !is_null($yearSemesterCourse->year) &&
@@ -71,6 +106,7 @@ class CourseAssignmentService
             // Get section counts by year_id
             $yearIds = $yearSemesterCourses->pluck('year_id')->unique()->filter()->values();
             $sectionsCountByYear = Section::whereIn('year_id', $yearIds)
+                ->where('department_id', $department_id)
                 ->groupBy('year_id')
                 ->select('year_id', DB::raw('COUNT(*) as count'))
                 ->get()
@@ -90,19 +126,22 @@ class CourseAssignmentService
     
             // Calculate scores for each instructor-course pair
             foreach ($instructors as $instructor) {
-                Log::info("Calculating scores for instructor:", ['instructor_id' => $instructor->id, 'name' => $instructor->name]);
+                Log::info("Calculating scores for instructor:", [
+                    'instructor_id' => $instructor->id,
+                    'name' => $instructor->name,
+                ]);
     
                 foreach ($yearSemesterCourses as $yearSemesterCourse) {
                     $course = $yearSemesterCourse->course;
                     $year = $yearSemesterCourse->year;
                     
-                 // Skip if course or year doesn't have matching department
-if (is_null($course->department_id)) {
-    continue;
-}
+                    // Skip if course or year doesn't have matching department
+                    if (is_null($course->department_id)) {
+                        continue;
+                    }
                     $score = 0;
     
-                    $choice = $instructor->choices->where('year_semester_course_id', $yearSemesterCourse->id)
+                    $choice = $instructor->choices->where('course_id', $course->id)
                                                   ->where('assignment_id', $assignment_id)
                                                   ->first();
                     $choiceRank = $choice ? $choice->rank : null;
@@ -161,12 +200,21 @@ if (is_null($course->department_id)) {
                         }
                     }
     
+                    // Get previous instructor for this course
+                    $previousInstructorId = $instructor->courses()
+                        ->where('course_id', $course->id)
+                        ->wherePivot('is_recent', true)
+                        ->first()
+                        ?->pivot
+                        ->instructor_id;
+    
                     $instructorScores[] = [
                         'instructor_id' => $instructor->id,
-                        'year_semester_course_id' => $yearSemesterCourse->id,
                         'course_id' => $course->id,
                         'score' => $score,
                         'choice_rank' => $choiceRank ?? 999,
+                        'stream_id' => $yearSemesterCourse->stream_id,
+                        'previous_instructor_id' => $previousInstructorId,
                     ];
                 }
             }
@@ -177,12 +225,25 @@ if (is_null($course->department_id)) {
                 ['choice_rank', 'asc']
             ]);
                  
-            Log::info("Globally sorted scores:", ['sorted_scores' => $sortedScores->values()->all()]);
+            Log::info("Globally sorted scores:", $sortedScores->values()->all());
     
             $allResults = [];
             // Process assignments
             foreach ($sortedScores as $instructorData) {
-                $yearSemesterCourse = YearSemesterCourse::find($instructorData['year_semester_course_id']);
+                $yearSemesterCourse = YearSemesterCourse::where('course_id', $instructorData['course_id'])
+                    ->where('semester_id', $semester_id)
+                    ->where('department_id', $department_id)
+                    ->where('stream_id', $instructorData['stream_id'])
+                    ->first();
+                
+                if (!$yearSemesterCourse) {
+                    Log::warning("No matching year_semester_course found for course:", [
+                        'course_id' => $instructorData['course_id'],
+                        'stream_id' => $instructorData['stream_id'],
+                    ]);
+                    continue;
+                }
+                
                 $course = $yearSemesterCourse->course;
                 $year = $yearSemesterCourse->year;
                 
@@ -198,37 +259,43 @@ if (is_null($course->department_id)) {
                 $currentLoad = $instructorLoad[$instructor->id] ?? 0;
     
                 // Initialize course results if not exists
-                if (!isset($allResults[$yearSemesterCourse->id])) {
-                    $allResults[$yearSemesterCourse->id] = [];
+                if (!isset($allResults[$instructorData['course_id']])) {
+                    $allResults[$instructorData['course_id']] = [];
                 }
     
                 // Store result for transparency
-                $allResults[$yearSemesterCourse->id][] = [
+                $allResults[$instructorData['course_id']][] = [
                     'Instructor' => $instructor->name,
                     'Score' => $instructorData['score'],
                     'Choice Rank' => $instructorData['choice_rank'],
                     'Course' => $course->name,
                     'Year' => $year->name,
+                    'Stream' => $yearSemesterCourse->stream ? $yearSemesterCourse->stream->name : 'None',
+                    'Previous Instructor ID' => $instructorData['previous_instructor_id'],
                 ];
     
                 // Check if already assigned
                 $existingResult = Result::where('instructor_id', $instructor->id)
-                    ->where('course_id', $yearSemesterCourse->id)
+                    ->where('course_id', $instructorData['course_id'])
                     ->where('assignment_id', $assignment_id)
                     ->exists();
     
                 if (!$existingResult) {
                     $is_assigned = 0;
+                    $reason = '';
     
                     // Check for higher preferences
                     $hasHigherPreference = false;
                     foreach ($yearSemesterCourses as $otherYearSemesterCourse) {
-                        if ($otherYearSemesterCourse->id != $yearSemesterCourse->id) {
-                            $otherChoice = $instructor->choices->where('course_id', $otherYearSemesterCourse->id)->where('assignment_id', $assignment_id)->first();
+                        if ($otherYearSemesterCourse->course_id != $instructorData['course_id']) {
+                            $otherChoice = $instructor->choices->where('course_id', $otherYearSemesterCourse->course_id)
+                                ->where('assignment_id', $assignment_id)
+                                ->first();
                             $otherChoiceRank = $otherChoice ? $otherChoice->rank : 999;
     
                             if ($otherChoiceRank < $instructorData['choice_rank']) {
                                 $hasHigherPreference = true;
+                                $reason = "Not assigned: Instructor has higher preference for another course.";
                                 break;
                             }
                         }
@@ -250,27 +317,42 @@ if (is_null($course->department_id)) {
                         $is_assigned = 1;
                         $instructorLoad[$instructor->id] = $currentLoad + $course->cp;
                         $assignedCourses[$course->id] = ($assignedCourses[$course->id] ?? 0) + 1;
+                        $reason = "Assigned: High score ({$instructorData['score']}) and within load capacity.";
+                        if ($instructorData['previous_instructor_id'] == $instructor->id) {
+                            $reason .= " Previously taught by this instructor.";
+                        }
+                    } elseif (!$hasHigherPreference && $currentLoad + $course->cp > $loadCapacity) {
+                        $reason = "Not assigned: Exceeds instructor load capacity ({$currentLoad} + {$course->cp} > {$loadCapacity}).";
+                    } elseif (!$hasHigherPreference && $currentAssignments >= $maxAssignments) {
+                        $reason = "Not assigned: Maximum assignments reached for course (current: {$currentAssignments}, max: {$maxAssignments}).";
                     }
     
                     // Create result record
                     $result = Result::create([
                         'instructor_id' => $instructor->id,
-                        'year_semester_course_id' => $yearSemesterCourse->id,
-                        'course_id' => $course->id,
+                        'course_id' => $instructorData['course_id'],
                         'assignment_id' => $assignment_id,
                         'point' => $instructorData['score'],
                         'is_assigned' => $is_assigned,
+                        'stream_id' => $yearSemesterCourse->stream_id,
+                        'previous_instructor_id' => $instructorData['previous_instructor_id'],
+                        'reason' => $reason,
                     ]);
     
                     Log::info("Assignment decision:", [
                         'course' => $course->name,
                         'year' => $year->name,
                         'instructor' => $instructor->name,
+                        'stream_id' => $yearSemesterCourse->stream_id,
+                        'stream_name' => $yearSemesterCourse->stream ? $yearSemesterCourse->stream->name : 'None',
                         'base_assignments' => $baseAssignments,
                         'sections_count' => $sectionsCount,
                         'max_assignments' => $maxAssignments,
                         'current_assignments' => $currentAssignments,
-                        'is_assigned' => $is_assigned
+                        'is_assigned' => $is_assigned,
+                        'score' => $instructorData['score'],
+                        'previous_instructor_id' => $instructorData['previous_instructor_id'],
+                        'reason' => $reason,
                     ]);
     
                     $assignedResults[] = $result;
@@ -283,13 +365,16 @@ if (is_null($course->department_id)) {
                 'assigned_results' => $assignedResults,
                 'all_scores' => $allResults,
                 'assignment_counts' => $assignedCourses,
-                'section_counts' => $sectionsCountByYear
+                'section_counts' => $sectionsCountByYear,
             ]);
     
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Error during course assignment:", ['error' => $e->getMessage()]);
+            Log::error("Error during course assignment:", [
+                'error' => $e->getMessage(),
+            ]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }
+?>
