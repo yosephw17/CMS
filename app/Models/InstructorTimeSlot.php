@@ -14,7 +14,7 @@ class InstructorTimeSlot extends Model
     protected $fillable = [
         'instructor_id',
         'time_slot_id',
-        'reason' 
+        'reason'
     ];
 
     public function instructor(): BelongsTo
