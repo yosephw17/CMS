@@ -6,6 +6,7 @@ use App\Models\Research;
 use App\Models\Field;
 use App\Models\Instructor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ResearchController extends Controller
 {
@@ -14,7 +15,7 @@ class ResearchController extends Controller
     {
         return Research::with('field', 'instructor')->get();
     }
-    
+
     // Show the form for creating a new research
     public function create()
     {
@@ -28,21 +29,31 @@ class ResearchController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'field_id' => 'required|exists:fields,id',
-            'instructor_id' => 'required|exists:instructors,id',
+            'field_id' => 'required|integer|exists:fields,id',
+            'instructor_id' => 'required|integer|exists:instructors,id',
             'link' => 'nullable|url',
             'description' => 'nullable|string',
+            'publication_date' => 'required|date',
+            'author_rank' => 'required|string|max:50',
+            'paper_type' => 'required|in:Journal,Conference',
         ]);
 
-          // Ensure isApproved is explicitly set to false
-    $research = Research::create([
-        'title' => $request->title,
-        'field_id' => $request->field_id,
-        'instructor_id' => $request->instructor_id,
-        'link' => $request->link,
-        'description' => $request->description,
-        'isApproved' => false, // Always set to false
-    ]);
+        $research = DB::transaction(function () use ($request) {
+            $research = Research::create([
+                'title' => $request->title,
+                'field_id' => $request->field_id,
+                'instructor_id' => $request->instructor_id,
+                'link' => $request->link,
+                'description' => $request->description,
+                'publication_date' => $request->publication_date,
+                'author_rank' => $request->author_rank,
+                'paper_type' => $request->paper_type,
+                'isApproved' => false, // Always set to false
+            ]);
+
+            $research->load(['field', 'instructor']);
+            return $research;
+        });
 
         return response()->json($research, 201);
     }
@@ -68,14 +79,33 @@ class ResearchController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'field_id' => 'required|exists:fields,id',
-            'instructor_id' => 'required|exists:instructors,id',
-            'link' => 'nullable|url',
+            'field_id' => 'required|integer|exists:fields,id',
+            'instructor_id' => 'required|integer|exists:instructors,id',
+            'link' => 'nullable|url|max:255',
             'description' => 'nullable|string',
+            'publication_date' => 'required|date',
+            'author_rank' => 'required|string|max:50',
+            'paper_type' => 'required|in:Journal,Conference',
+            'isApproved' => 'nullable|boolean',
         ]);
 
-        $research = Research::findOrFail($id);
-        $research->update($request->all());
+        $research = DB::transaction(function () use ($request, $id) {
+            $research = Research::findOrFail($id);
+            $research->update([
+                'title' => $request->title,
+                'field_id' => $request->field_id,
+                'instructor_id' => $request->instructor_id,
+                'link' => $request->link,
+                'description' => $request->description,
+                'publication_date' => $request->publication_date,
+                'author_rank' => $request->author_rank,
+                'paper_type' => $request->paper_type,
+                'isApproved' => $request->isApproved ?? $research->isApproved,
+            ]);
+
+            $research->load(['field', 'instructor']);
+            return $research;
+        });
 
         return response()->json($research);
     }

@@ -15,6 +15,9 @@ class Research extends Model
         'instructor_id',
         'link',
         'description',
+        'author_rank',
+        'paper_type',
+        'publication_date'
     ];
 
     /**

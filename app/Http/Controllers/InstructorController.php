@@ -6,79 +6,132 @@ use App\Models\Instructor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-
 class InstructorController extends Controller
 {
-        public function index()
-        {
-            return Instructor::with('role','educationalBackgrounds','professionalExperiences')->get();
-        }
-
-   public function store(Request $request)
-{
-    // Set default role_id if not provided
-    $roleId = $request->role_id ?: 1; // Default to role_id 1 if not provided
-
-    // Validate the request
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'is_available' => 'required|boolean',
-        'email' => 'required|email|unique:instructors,email',
-        'phone' => 'nullable|string',
-        'is_studying' => 'nullable|boolean',
-        'is_approved' => 'nullable|boolean',
-        'pro_exp_ids' => 'nullable|array', // Array of professional experience IDs
-        'pro_exp_ids.*' => 'nullable|integer|exists:professional_experiences,id', // Validate each ID
-        'edu_backgrounds' => 'nullable|array', // Array of educational backgrounds
-        'edu_backgrounds.*.edu_background_id' => 'nullable|integer|exists:educational_backgrounds,id', // Validate each educational background ID
-        'edu_backgrounds.*.field_id' => 'nullable|integer|exists:fields,id', // Validate each field ID
-    ]);
-
-    // Add the role_id to the request data if it's not sent
-    $data = $request->all();
-    $data['role_id'] = $roleId;
-    $data['department_id'] = $request->department_id ? : 1;
-
-    // Remove unnecessary fields from the data
-    unset($data['pro_exp_ids']);
-    unset($data['edu_backgrounds']);
-
-    // Create the instructor with the data
-    $instructor = Instructor::create($data);
-
-    // Attach professional experiences
-    if ($request->has('pro_exp_ids')) {
-        foreach ($request->pro_exp_ids as $proExpId) {
-            DB::table('instructor_professional_experience')->insert([
-                'instructor_id' => $instructor->id,
-                'pro_exp_id' => $proExpId,
-            ]);
-        }
+    public function index()
+    {
+        return Instructor::with([
+            'role',
+            'educationalBackgrounds',
+            'professionalExperiences',
+            'courses' // Include courses relationship
+        ])->get();
     }
 
-    // Attach educational backgrounds and fields
-    if ($request->has('edu_backgrounds')) {
-        foreach ($request->edu_backgrounds as $eduBackground) {
-            DB::table('instructor_educational_background')->insert([
-                'instructor_id' => $instructor->id,
-                'edu_background_id' => $eduBackground['edu_background_id'],
-                'field_id' => $eduBackground['field_id'],
-            ]);
-        }
+    public function store(Request $request)
+    {
+        // Set default role_id and department_id if not provided
+        $roleId = $request->role_id ?: 1;
+        $departmentId = $request->department_id ?: 1;
+
+        // Validate the request
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'is_available' => 'required|boolean',
+            'email' => 'required|email|unique:instructors,email',
+            'phone' => 'nullable|string',
+            'is_studying' => 'nullable|boolean',
+            'is_approved' => 'nullable|boolean',
+            'role_id' => 'nullable|integer|exists:instructor_roles,id',
+            'department_id' => 'nullable|integer|exists:departments,id',
+            'pro_exp_ids' => 'nullable|array',
+            'pro_exp_ids.*' => 'nullable|integer|exists:professional_experiences,id',
+            'edu_backgrounds' => 'nullable|array',
+            'edu_backgrounds.*.edu_background_id' => 'nullable|integer|exists:educational_backgrounds,id',
+            'edu_backgrounds.*.field_id' => 'nullable|integer|exists:fields,id',
+            'courses' => 'nullable|array', // Validate courses array
+            'courses.*.course_id' => 'required|integer|exists:courses,id',
+            'courses.*.number_of_semesters' => 'required|integer|min:0',
+            'courses.*.is_recent' => 'required|boolean',
+        ]);
+
+        // Start a transaction to ensure data consistency
+        return DB::transaction(function () use ($request, $roleId, $departmentId) {
+            // Prepare data for instructor creation
+            $data = $request->all();
+            $data['role_id'] = $roleId;
+            $data['department_id'] = $departmentId;
+
+            // Remove relationship data from the main data
+            unset($data['pro_exp_ids']);
+            unset($data['edu_backgrounds']);
+            unset($data['courses']);
+
+            // Create the instructor
+            $instructor = Instructor::create($data);
+
+            // Attach professional experiences
+            if ($request->has('pro_exp_ids') && !empty($request->pro_exp_ids)) {
+                foreach ($request->pro_exp_ids as $proExpId) {
+                    if ($proExpId) {
+                        DB::table('instructor_professional_experience')->insert([
+                            'instructor_id' => $instructor->id,
+                            'pro_exp_id' => $proExpId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            // Attach educational backgrounds
+            if ($request->has('edu_backgrounds') && !empty($request->edu_backgrounds)) {
+                foreach ($request->edu_backgrounds as $eduBackground) {
+                    if ($eduBackground['edu_background_id'] && $eduBackground['field_id']) {
+                        DB::table('instructor_educational_background')->insert([
+                            'instructor_id' => $instructor->id,
+                            'edu_background_id' => $eduBackground['edu_background_id'],
+                            'field_id' => $eduBackground['field_id'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            // Attach courses
+            if ($request->has('courses') && !empty($request->courses)) {
+                // Ensure only one course has is_recent = true
+                $hasRecent = false;
+                foreach ($request->courses as $course) {
+                    if ($course['is_recent']) {
+                        if ($hasRecent) {
+                            $course['is_recent'] = false; // Enforce one is_recent
+                        } else {
+                            $hasRecent = true;
+                        }
+                    }
+                    if ($course['course_id']) {
+                        DB::table('instructor_course')->insert([
+                            'instructor_id' => $instructor->id,
+                            'course_id' => $course['course_id'],
+                            'number_of_semesters' => $course['number_of_semesters'],
+                            'is_recent' => $course['is_recent'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            // Load relationships for response
+            $instructor->load(['role', 'educationalBackgrounds', 'professionalExperiences', 'courses']);
+
+            return response()->json($instructor, 201);
+        });
     }
 
-    // Return the newly created instructor as a JSON response
-    return response()->json($instructor, 201);
-}
-
-
-public function show($id)
-{
-    $instructor = Instructor::with('role', 'educationalBackgrounds', 'professionalExperiences', 'researches')
-    ->findOrFail($id);
-    return response()->json($instructor);
-}
-
+    public function show($id)
+    {
+        $instructor = Instructor::with([
+            'role',
+            'educationalBackgrounds',
+            'professionalExperiences',
+            'researches',
+            'courses' // Include courses relationship
+        ])->findOrFail($id);
+        return response()->json($instructor);
+    }
 
     public function update(Request $request, Instructor $instructor)
     {
@@ -90,52 +143,105 @@ public function show($id)
             'is_available' => 'required|boolean',
             'is_studying' => 'nullable|boolean',
             'is_approved' => 'nullable|boolean',
-            'role_id' => 'required|exists:instructor_roles,id',
-            'pro_exp_ids' => 'nullable|array', // Array of professional experience IDs
-            'pro_exp_ids.*' => 'nullable|integer|exists:professional_experiences,id', // Validate each ID
-            'edu_backgrounds' => 'nullable|array', // Array of educational backgrounds
-            'edu_backgrounds.*.edu_background_id' => 'nullable|integer|exists:educational_backgrounds,id', // Validate each educational background ID
-            'edu_backgrounds.*.field_id' => 'nullable|integer|exists:fields,id', // Validate each field ID
+            'role_id' => 'required|integer|exists:instructor_roles,id',
+            'department_id' => 'required|integer|exists:departments,id',
+            'pro_exp_ids' => 'nullable|array',
+            'pro_exp_ids.*' => 'nullable|integer|exists:professional_experiences,id',
+            'edu_backgrounds' => 'nullable|array',
+            'edu_backgrounds.*.edu_background_id' => 'nullable|integer|exists:educational_backgrounds,id',
+            'edu_backgrounds.*.field_id' => 'nullable|integer|exists:fields,id',
+            'courses' => 'nullable|array',
+            'courses.*.course_id' => 'required|integer|exists:courses,id',
+            'courses.*.number_of_semesters' => 'required|integer|min:0',
+            'courses.*.is_recent' => 'required|boolean',
         ]);
 
-        // Update the instructor data
-        $instructor->update($request->except('pro_exp_ids', 'edu_backgrounds'));
+        // Start a transaction to ensure data consistency
+        return DB::transaction(function () use ($request, $instructor) {
+            // Update the instructor data
+            $instructor->update($request->except('pro_exp_ids', 'edu_backgrounds', 'courses'));
 
-        // Update the professional experiences
-        if ($request->has('pro_exp_ids')) {
-            // First, delete old professional experiences
-            DB::table('instructor_professional_experience')->where('instructor_id', $instructor->id)->delete();
+            // Update professional experiences
+            if ($request->has('pro_exp_ids')) {
+                // Delete old professional experiences
+                DB::table('instructor_professional_experience')
+                    ->where('instructor_id', $instructor->id)
+                    ->delete();
 
-            // Attach new professional experiences
-            foreach ($request->pro_exp_ids as $proExpId) {
-                DB::table('instructor_professional_experience')->insert([
-                    'instructor_id' => $instructor->id,
-                    'pro_exp_id' => $proExpId,
-                ]);
+                // Attach new professional experiences
+                foreach ($request->pro_exp_ids as $proExpId) {
+                    if ($proExpId) {
+                        DB::table('instructor_professional_experience')->insert([
+                            'instructor_id' => $instructor->id,
+                            'pro_exp_id' => $proExpId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
             }
-        }
 
-        // Update the educational backgrounds
-        if ($request->has('edu_backgrounds')) {
-            // First, delete old educational backgrounds
-            DB::table('instructor_educational_background')->where('instructor_id', $instructor->id)->delete();
+            // Update educational backgrounds
+            if ($request->has('edu_backgrounds')) {
+                // Delete old educational backgrounds
+                DB::table('instructor_educational_background')
+                    ->where('instructor_id', $instructor->id)
+                    ->delete();
 
-            // Attach new educational backgrounds and fields
-            foreach ($request->edu_backgrounds as $eduBackground) {
-                DB::table('instructor_educational_background')->insert([
-                    'instructor_id' => $instructor->id,
-                    'edu_background_id' => $eduBackground['edu_background_id'],
-                    'field_id' => $eduBackground['field_id'],
-                ]);
+                // Attach new educational backgrounds
+                foreach ($request->edu_backgrounds as $eduBackground) {
+                    if ($eduBackground['edu_background_id'] && $eduBackground['field_id']) {
+                        DB::table('instructor_educational_background')->insert([
+                            'instructor_id' => $instructor->id,
+                            'edu_background_id' => $eduBackground['edu_background_id'],
+                            'field_id' => $eduBackground['field_id'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
             }
-        }
 
-        // Return the updated instructor as a JSON response
-        return response()->json($instructor);
+            // Update courses
+            if ($request->has('courses')) {
+                // Delete old courses
+                DB::table('instructor_course')
+                    ->where('instructor_id', $instructor->id)
+                    ->delete();
+
+                // Attach new courses
+                $hasRecent = false;
+                foreach ($request->courses as $course) {
+                    if ($course['is_recent']) {
+                        if ($hasRecent) {
+                            $course['is_recent'] = false; // Enforce one is_recent
+                        } else {
+                            $hasRecent = true;
+                        }
+                    }
+                    if ($course['course_id']) {
+                        DB::table('instructor_course')->insert([
+                            'instructor_id' => $instructor->id,
+                            'course_id' => $course['course_id'],
+                            'number_of_semesters' => $course['number_of_semesters'],
+                            'is_recent' => $course['is_recent'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            // Load relationships for response
+            $instructor->load(['role', 'educationalBackgrounds', 'professionalExperiences', 'courses']);
+
+            return response()->json($instructor);
+        });
     }
 
     public function destroy(Instructor $instructor)
     {
+        // Detach relationships (cascade delete handles instructor_course)
         $instructor->educationalBackgrounds()->detach();
         $instructor->professionalExperiences()->detach();
 
