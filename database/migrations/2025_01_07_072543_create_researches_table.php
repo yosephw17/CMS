@@ -15,11 +15,14 @@ class CreateResearchesTable extends Migration
     {
         Schema::create('researches', function (Blueprint $table) {
             $table->id(); 
-            $table->string('title'); 
+            $table->text('title'); 
             $table->unsignedBigInteger('field_id'); 
             $table->unsignedBigInteger('instructor_id'); 
-            $table->string('link')->nullable(); 
-            $table->text('description')->nullable(); 
+            $table->text('link')->nullable(); 
+            $table->text('description')->nullable();
+            $table->date('publication_date'); // Date of publication
+            $table->string('author_rank'); // Rank of Author (e.g., "4th")
+            $table->enum('paper_type', ['Journal', 'Conference']); // Type of research paper
             $table->timestamps(); 
 
             $table->foreign('field_id')->references('id')->on('fields')->onDelete('cascade');

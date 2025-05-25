@@ -10,7 +10,7 @@ class Result extends Model
     use HasFactory;
     protected $fillable=[
 
-    'point','is_assigned','instructor_id','course_id','assignment_id','stream_id'
+    'point','is_assigned','instructor_id','course_id','assignment_id','stream_id','type'
     ];
     public function course()
     {

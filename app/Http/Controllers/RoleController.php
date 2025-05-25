@@ -12,7 +12,7 @@ class RoleController extends Controller
     /**
      * Display a listing of the roles.
      */
-    public function index()
+ public function index()
     {
         $roles = Role::with('permissions')->get();
         $permissions = Permission::all();

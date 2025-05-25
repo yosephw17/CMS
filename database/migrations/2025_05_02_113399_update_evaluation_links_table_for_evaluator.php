@@ -11,13 +11,10 @@ return new class extends Migration
     {
         Schema::table('evaluation_links', function (Blueprint $table) {
             // Remove old columns
-            $table->dropColumn(['student_email', 'student_name']);
+            $table->dropColumn(['student_email']);
 
             // Add new evaluator relationship
-            $table->foreignId('evaluator_id')->constrained('evaluators');
 
-            // Optional but recommended
-            $table->timestamp('completed_at')->nullable();
         });
     }
 

@@ -9,6 +9,7 @@ class EvaluatorSeeder extends Seeder
 {
     public function run()
     {
+
         $evaluators = [
             [
                 'email' => 'endrishiyaru@gmail.com',
@@ -141,6 +142,7 @@ class EvaluatorSeeder extends Seeder
 
             ]
         ];
+
 
 
         foreach ($evaluators as $evaluator) {

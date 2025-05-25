@@ -14,7 +14,7 @@ return new class extends Migration
         // Evaluation links (replaces invitations)
 Schema::create('evaluation_links', function (Blueprint $table) {
     $table->id();
-    $table->foreignId('instructor_id')->constrained('instructors');
+    $table->foreignId('instructor_id')->constrained('instructors')->onDelete('cascade');
     $table->string('student_email');
     $table->string('hash')->unique(); // URL identifier
     $table->boolean('is_used')->default(false);

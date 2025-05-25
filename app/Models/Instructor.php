@@ -15,6 +15,7 @@ class Instructor extends Model
         'email',
         'phone',
         'role_id',
+        'department_id',
         'is_available',
         'is_studying',
         'is_approved',

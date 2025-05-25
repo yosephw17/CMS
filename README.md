@@ -19,7 +19,7 @@ The **Course Management System** is designed to streamline course creation, inst
 - **Frontend:** [React / Angular / Vue] (mention the actual framework used)  
 - **Backend:** [Node.js / Django / Laravel]  
 - **Database:** [MySQL / PostgreSQL / MongoDB]  
-- **Authentication:** JWT / OAuth  
+- **Authentication:** Laravel sanctum  
 
 ## 📂 Project Structure  
 ```bash
