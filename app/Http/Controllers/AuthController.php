@@ -33,21 +33,35 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-    {
-        $request->validate([ 'email' => 'required|email', 'password' => 'required|string', 'remember' => 'boolean', ]);
-        $credentials = $request->only('email', 'password');
-        $remember = $request->input('remember', false);
-        if (Auth::attempt($credentials,$remember    )) {
-            $user = Auth::user();
-            $token = $user->createToken('auth_token')->plainTextToken;
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required|string',
+        'remember' => 'boolean',
+    ]);
 
-            return response()->json(['token' => $token,
-        'user' => $user]);
-        }
+    // Find user by email
+    $user = User::where('email', $request->email)->first();
 
+    // Check if user exists and password matches
+    if (!$user || !Hash::check($request->password, $user->password)) {
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
+    // Create Sanctum token
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'token' => $token,
+        'user' => [
+            'id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ]
+    ]);
+}
 
     public function logout(Request $request)
     {
@@ -58,7 +72,7 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logged out successfully'], 200);
     }
 
-     public function user(Request $request)
+    public function user(Request $request)
     {
         return response()->json($request->user());
     }

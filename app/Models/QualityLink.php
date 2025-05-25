@@ -16,7 +16,12 @@ class QualityLink extends Model
         'semester_id',
         'academic_year_id',
         'hash',
-        'is_used'
+        'is_used',
+        'evaluator_id', // Add evaluator_id to fillable attributes
+        'is_self_evaluation',
+        'section',
+        'department_id',
+        'courses_id'
     ];
 
     protected static function boot()
@@ -40,6 +45,8 @@ class QualityLink extends Model
         return $this->belongsTo(Instructor::class, 'instructor_id');
     }
 
+
+
     public function semester()
     {
         return $this->belongsTo(Semester::class);
@@ -50,4 +57,20 @@ class QualityLink extends Model
     {
         return $this->belongsTo(AcademicYear::class);
     }
+    public function course()
+    {
+        return $this->belongsTo(Course::class,'courses_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+
+    // Add to your relationships
+public function evaluator()
+{
+    return $this->belongsTo(QualityAssuranceEvaluator::class);
+}
 }

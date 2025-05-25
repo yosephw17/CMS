@@ -14,7 +14,8 @@ class QualityQuestion extends Model
     protected $fillable = [
         'question_text',
         'input_type',
-        'options'
+        'options',
+        'audience' // Added audience field
     ];
 
     protected $casts = [
