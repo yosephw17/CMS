@@ -27,6 +27,8 @@ return [
         'role' => Spatie\Permission\Models\Role::class,
 
     ],
+    'default_guard' => 'sanctum', // Set to sanctum
+
 
     'table_names' => [
 

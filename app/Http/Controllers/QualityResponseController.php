@@ -132,12 +132,17 @@ class QualityResponseController extends Controller
         return $answer; // Return strings as-is
     }
 
-
+    /**
+     * Get quality assessment form data for a given link hash.
+     *
+     * @param string $hash
+     * @return JsonResponse
+     */
     public function getForm($hash)
     {
-        $link = QualityLink::with(['instructor', 'auditSession', 'semester', 'academicYear'])
-               ->where('hash', $hash)
-               ->first();
+        $link = QualityLink::with(['instructor', 'auditSession', 'semester', 'academicYear', 'evaluator'])
+            ->where('hash', $hash)
+            ->first();
 
         // Case 1: Link doesn't exist
         if (!$link) {
@@ -170,86 +175,321 @@ class QualityResponseController extends Controller
                 'session' => $link->auditSession->only(['id', 'name']),
                 'academic_year' => $link->academicYear->only(['id', 'name']),
                 'semester' => $link->semester->only(['id', 'name']),
-                'questions' => QualityQuestion::orderBy('id')->get()->map(function ($question) {
-                    $options = null;
+                'evaluator' => $link->evaluator ? $link->evaluator->only(['id', 'name', 'email']) : null,
+                'is_self_evaluation' => $link->is_self_evaluation,
+                'questions' => QualityQuestion::where('audience', $link->is_self_evaluation ? 'instructor' : 'student')
+                    ->orderBy('id')
+                    ->get()
+                    ->map(function ($question) {
+                        $options = null;
 
-                    if (in_array($question->input_type, ['dropdown', 'checkbox'])) {
-                        try {
-                            $options = is_string($question->options)
-                                ? json_decode($question->options, true)
-                                : (is_array($question->options) ? $question->options : []);
-                        } catch (\Exception $e) {
-                            $options = [];
-                            \Log::error("Failed to decode options for question {$question->id}: " . $e->getMessage());
+                        if (in_array($question->input_type, ['dropdown', 'checkbox'])) {
+                            try {
+                                $options = is_string($question->options)
+                                    ? json_decode($question->options, true)
+                                    : (is_array($question->options) ? $question->options : []);
+                            } catch (\Exception $e) {
+                                $options = [];
+                                \Log::error("Failed to decode options for question {$question->id}: " . $e->getMessage());
+                            }
                         }
-                    }
 
-                    return [
-                        'id' => $question->id,
-                        'text' => $question->question_text,
-                        'type' => $question->input_type,
-                        'options' => $options
-                    ];
-                })
+                        return [
+                            'id' => $question->id,
+                            'text' => $question->question_text,
+                            'type' => $question->input_type,
+                            'options' => $options
+                        ];
+                    })
             ]
         ]);
     }
 
+    /**
+     * Get all quality responses grouped by instructor, academic year, semester, and department.
+     *
+     * @return JsonResponse
+     */
+    public function getAllResponses(): JsonResponse
+    {
+        try {
+            $responses = QualityResponse::with([
+                'qualityLink.instructor:id,name,email',
+                'qualityLink.evaluator:id,name,email,section',
+                'qualityLink.auditSession:id,name',
+                'qualityLink.semester:id,name',
+                'qualityLink.academicYear:id,name',
+                'qualityLink.department:id,name',
+                'question:id,question_text,input_type',
+            ])
+            ->whereHas('qualityLink', function ($q) {
+                $q->where('is_used', true);
+            })
+            ->get();
 
+            // Log raw responses for debugging
+            Log::debug('Raw quality responses for getAllResponses', [
+                'count' => $responses->count(),
+                'data' => $responses->map(function ($response) {
+                    $department = $response->qualityLink?->department;
+                    return [
+                        'response_id' => $response->id,
+                        'quality_link_id' => $response->quality_link_id,
+                        'instructor_id' => $response->qualityLink?->instructor_id,
+                        'instructor' => $response->qualityLink?->instructor ? [
+                            'id' => $response->qualityLink->instructor->id,
+                            'name' => $response->qualityLink->instructor->name,
+                            'email' => $response->qualityLink->instructor->email
+                        ] : null,
+                        'academic_year_id' => $response->qualityLink?->academic_year_id,
+                        'academic_year' => $response->qualityLink?->academicYear ? [
+                            'id' => $response->qualityLink->academicYear->id,
+                            'name' => $response->qualityLink->academicYear->name
+                        ] : null,
+                        'semester_id' => $response->qualityLink?->semester_id,
+                        'semester' => $response->qualityLink?->semester ? [
+                            'id' => $response->qualityLink->semester->id,
+                            'name' => $response->qualityLink->semester->name,
+                        ] : null,
+                        'department_id' => $response->qualityLink?->department_id,
+                        'department' => is_object($department) ? [
+                            'id' => $department->id,
+                            'name' => $department->name
+                        ] : null,
+                        'question_id' => $response->question_id,
+                        'answer' => $response->getRawOriginal('answer'),
+                        'is_self_evaluation' => $response->qualityLink?->is_self_evaluation,
+                        'is_used' => $response->qualityLink?->is_used
+                    ];
+                })->toArray()
+            ]);
 
+            $groupedResponses = $responses
+                ->groupBy(function ($response) {
+                    if (!$response->qualityLink || !$response->qualityLink->instructor || !$response->qualityLink->academicYear || !$response->qualityLink->semester) {
+                        Log::warning('Invalid grouping data for response', [
+                            'response_id' => $response->id,
+                            'quality_link_id' => $response->quality_link_id,
+                            'instructor_type' => gettype($response->qualityLink?->instructor),
+                            'academic_year_type' => gettype($response->qualityLink?->academicYear),
+                            'semester_type' => gettype($response->qualityLink?->semester)
+                        ]);
+                        return 'invalid';
+                    }
+                    // Create a composite key for grouping by instructor, academic year, semester
+                    return implode(':', [
+                        $response->qualityLink->instructor->id,
+                        $response->qualityLink->academicYear->name,
+                        $response->qualityLink->semester->name,
+                    ]);
+                })
+                ->map(function ($group, $key) {
+                    if ($key === 'invalid') {
+                        return null; // Skip invalid groups
+                    }
 
-    public function getAllResponses()
-{
-    $responses = QualityResponse::with([
-            'qualityLink.instructor:id,name,email',
-            'qualityLink.auditSession:id,name',
-            'qualityLink.semester:id,name',
-            'qualityLink.academicYear:id,name',
-            'question:id,question_text,input_type'
-        ])
-        ->whereHas('qualityLink', function($q) {
-            $q->where('is_used', true);
-        })
-        ->get()
-        ->groupBy('quality_link_id')
-        ->map(function ($group, $linkId) {
-            $first = $group->first();
+                    // Extract instructor, academic year, semester from the first response
+                    $first = $group->first();
+                    $instructor = [
+                        'id' => (string)$first->qualityLink->instructor->id,
+                        'name' => $first->qualityLink->instructor->name,
+                        'email' => $first->qualityLink->instructor->email
+                    ];
+                    $academicYear = $first->qualityLink->academicYear->name;
+                    $semester = $first->qualityLink->semester->name;
 
-            return [
-                'id' => $linkId,
-                'instructor' => [
-                    'id' => (string)$first->qualityLink->instructor->id,
-                    'name' => $first->qualityLink->instructor->name,
-                    'email' => $first->qualityLink->instructor->email
-                ],
-                'academic_year' => $first->qualityLink->academicYear->name,
-                'semester' => $first->qualityLink->semester->name,
-                'audit_session' => $first->qualityLink->auditSession->name,
-                'submitted_at' => $first->created_at->toIso8601String(),
-                'responses' => $group->map(function ($response) {
-                    // Get the raw answer from database without any processing
-                    $rawAnswer = $response->getRawOriginal('answer');
+                    // Group responses by quality_link_id to maintain individual submissions
+                    $submissions = $group->groupBy('quality_link_id')->map(function ($submissionGroup, $linkId) {
+                        $firstSubmission = $submissionGroup->first();
 
-                    // Format based on question type
-                    $formattedAnswer = match($response->question->input_type) {
-                        'dropdown' => is_array($rawAnswer) ? json_encode($rawAnswer) : $rawAnswer,
-                        'textarea' => $rawAnswer ?? '', // Ensure empty string instead of null
-                        default => (string)$rawAnswer
-                    };
+                        // Validate suspicious answers
+                        if ($firstSubmission->question->input_type === 'text' && is_numeric($firstSubmission->getRawOriginal('answer'))) {
+                            Log::warning('Suspicious text answer', [
+                                'response_id' => $firstSubmission->id,
+                                'question_id' => $firstSubmission->question_id,
+                                'answer' => $firstSubmission->getRawOriginal('answer')
+                            ]);
+                        }
+
+                        // Validate section-answer mismatch for question ID 18
+                        if ($firstSubmission->question_id === 18 && $firstSubmission->getRawOriginal('answer') && $firstSubmission->qualityLink->section) {
+                            $rawAnswer = $firstSubmission->getRawOriginal('answer');
+                            $answerSection = is_array($rawAnswer) ? $rawAnswer[0] : $rawAnswer;
+                            if ($answerSection !== $firstSubmission->qualityLink->section) {
+                                Log::warning('Section-answer mismatch', [
+                                    'response_id' => $firstSubmission->id,
+                                    'question_id' => $firstSubmission->question_id,
+                                    'answer_section' => $answerSection,
+                                    'quality_link_section' => $firstSubmission->qualityLink->section
+                                ]);
+                            }
+                        }
+
+                        return [
+                            'id' => $linkId,
+                            'evaluator' => $firstSubmission->qualityLink->is_self_evaluation
+                                ? null
+                                : ($firstSubmission->qualityLink->evaluator
+                                    ? [
+                                        'id' => (string)$firstSubmission->qualityLink->evaluator->id,
+                                        'name' => $firstSubmission->qualityLink->evaluator->name,
+                                        'email' => $firstSubmission->qualityLink->evaluator->email,
+                                        'section' => $firstSubmission->qualityLink->evaluator->section
+                                    ]
+                                    : null),
+                            'is_self_evaluation' => $firstSubmission->qualityLink->is_self_evaluation,
+                            'audit_session' => $firstSubmission->qualityLink->auditSession->name,
+                            'submitted_at' => $firstSubmission->created_at->toIso8601String(),
+                            'responses' => $submissionGroup->map(function ($response) {
+                                // Get the raw answer from database without any processing
+                                $rawAnswer = $response->getRawOriginal('answer');
+
+                                // Format based on question type
+                                $formattedAnswer = match($response->question->input_type) {
+                                    'dropdown' => is_array($rawAnswer) ? json_encode($rawAnswer) : $rawAnswer,
+                                    'textarea' => $rawAnswer ?? '', // Ensure empty string instead of null
+                                    default => (string)$rawAnswer
+                                };
+
+                                return [
+                                    'question' => $response->question->question_text,
+                                    'type' => $response->question->input_type,
+                                    'answer' => $formattedAnswer
+                                ];
+                            })->values()
+                        ];
+                    })->values();
 
                     return [
-                        'question' => $response->question->question_text,
-                        'type' => $response->question->input_type,
-                        'answer' => $formattedAnswer
+                        'instructor' => $instructor,
+                        'academic_year' => $academicYear,
+                        'semester' => $semester,
+                        'submissions' => $submissions
                     ];
-                })->values()
+                })
+                ->filter() // Remove null entries from invalid groups
+                ->values();
+
+            // Log grouped responses
+            Log::info('Grouped quality responses for getAllResponses', [
+                'count' => $groupedResponses->count(),
+                'structure' => $groupedResponses->map(function ($group) {
+                    return [
+                        'instructor' => $group['instructor']['name'],
+                        'academic_year' => $group['academic_year'],
+                        'semester' => $group['semester'],
+                        'submission_count' => count($group['submissions'])
+                    ];
+                })->toArray()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $groupedResponses
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Quality Response Error in getAllResponses: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch responses',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get quality responses grouped by section for self-evaluations.
+     *
+     * @return JsonResponse
+     */
+    public function getGroupedResponses(Request $request)
+    {
+        // Fetch quality responses with related data using eager loading
+        $responses = QualityResponse::with([
+            'qualityLink.instructor',
+            'qualityLink.course',
+            'qualityLink.semester',
+            'qualityLink.academicYear',
+            'qualityLink.department',
+            'qualityLink.auditSession',
+            'question'
+        ])->get();
+
+        // Group responses by academic_year, semester, audit_session, department, and section
+        $groupedData = $responses->groupBy(function ($response) {
+            $qualityLink = $response->qualityLink;
+            return $qualityLink->academicYear->name . '|' .
+                   $qualityLink->semester->name . '|' .
+                   $qualityLink->auditSession->name . '|' .
+                   $qualityLink->department->name . '|' .
+                   $qualityLink->section;
+        })->map(function ($group) {
+            // Group by instructor within each group
+            $instructors = $group->groupBy('qualityLink.instructor_id')->map(function ($instructorResponses) {
+                $firstResponse = $instructorResponses->first();
+                $qualityLink = $firstResponse->qualityLink;
+                $instructor = $qualityLink->instructor;
+                $course = $qualityLink->course;
+
+                // Organize responses by question
+                $responses = $instructorResponses->mapWithKeys(function ($response) {
+                    return [$response->question->question_text => $response->answer];
+                })->toArray();
+
+                // Calculate percentages
+                $chaptersTotal = $responses['Total Number of Chapters in the Course'] ?? 0;
+                $chaptersCovered = $responses['Total Number of Chapters Covered'] ?? 0;
+                $assessmentsTotal = $responses['Total number of assessments in the course'] ?? 0;
+                $assessmentsDelivered = $responses['Total number of assessments delivered'] ?? 0;
+                $feedbackGiven = $responses['Total number of feedback given back to students'] ?? 0;
+
+                // Avoid division by zero
+                $chapterCompletion = $chaptersTotal > 0 ? round(($chaptersCovered / $chaptersTotal) * 100, 2) : 0;
+                $assessmentDelivery = $assessmentsTotal > 0 ? round(($assessmentsDelivered / $assessmentsTotal) * 100, 2) : 0;
+                $feedbackPercentage = $assessmentsTotal > 0 ? round(($feedbackGiven / $assessmentsTotal) * 100, 2) : 0;
+
+                // Add calculated percentages to responses
+                $responses['Chapter Completion (%)'] = $chapterCompletion;
+                $responses['Assessment Delivery (%)'] = $assessmentDelivery;
+                $responses['Feedback Percentage (%)'] = $feedbackPercentage;
+
+                return [
+                    'instructor' => [
+                        'id' => $instructor->id,
+                        'name' => $instructor->name,
+                        'email' => $instructor->email,
+                    ],
+                    'course' => [
+                        'id' => $course->id,
+                        'name' => $course->name,
+                    ],
+                    'responses' => $responses,
+                ];
+            })->values();
+
+            // Extract group keys
+            $keys = explode('|', $group->first()->qualityLink->academicYear->name . '|' .
+                            $group->first()->qualityLink->semester->name . '|' .
+                            $group->first()->qualityLink->auditSession->name . '|' .
+                            $group->first()->qualityLink->department->name . '|' .
+                            $group->first()->qualityLink->section);
+
+            return [
+                'academic_year' => $keys[0],
+                'semester' => $keys[1],
+                'audit_session' => $keys[2],
+                'department' => $keys[3],
+                'section' => $keys[4],
+                'instructors' => $instructors,
             ];
-        })
-        ->values();
+        })->values();
 
-    return response()->json($responses);
-}
-
+        return response()->json($groupedData);
+    }
 
 }
-

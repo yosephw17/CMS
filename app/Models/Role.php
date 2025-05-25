@@ -13,5 +13,12 @@ class Role extends Model
     protected $attributes = [
         'guard_name' => 'sanctum',
     ];
-    
+
+
+    public function permissions()
+{
+    return $this->belongsToMany(Permission::class);
 }
+
+}
+

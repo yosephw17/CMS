@@ -25,7 +25,9 @@ class QualityQuestionController extends Controller
         $validated = $request->validate([
             'question_text' => 'required|string|max:1000',
             'input_type' => ['required', Rule::in(['text','number', 'dropdown', 'textarea', 'checkbox'])],
-            'options' => 'nullable|array' // Required if input_type is dropdown/checkbox
+            'options' => 'nullable|array', // Required if input_type is dropdown/checkbox
+            'audience' => ['required', Rule::in(['instructor', 'student'])],
+
         ]);
 
         // Convert options array to JSON if present

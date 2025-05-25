@@ -14,7 +14,7 @@ return [
     */
 
     'defaults' => [
-        'guard' => 'web', // Default guard is 'web' for web-based authentication
+        'guard' => 'sanctum', // Default guard is 'web' for web-based authentication
         'passwords' => 'users',
     ],
 

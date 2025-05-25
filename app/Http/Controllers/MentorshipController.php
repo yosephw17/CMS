@@ -17,88 +17,93 @@ class MentorshipController extends Controller
 
 
     public function index(){
-        $students = Student::with('instructor')->get();
+        $students = Student::with(['instructor', 'department','academicYear'])->get();
 
          return response()->json(['students' => $students]);
     }
 
 
     public function update(Request $request, $id)
-{
-    // Fetch the student by id
-    $student = Student::find($id);
+    {
+        // Fetch the student by id
+        $student = Student::find($id);
 
-    // Check if the student exists
-    if (!$student) {
-        return response()->json(['message' => 'Student not found'], 404);
+        // Check if the student exists
+        if (!$student) {
+            return response()->json(['message' => 'Student not found'], 404);
+        }
+
+        // Validate the incoming request data
+        $validatedData = $request->validate([
+            'full_name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|nullable|email|max:255',
+            'phone_number' => 'sometimes|string|max:20',
+            'department_id' => 'sometimes|exists:departments,id',
+            'assigned_mentor_id' => 'sometimes|nullable|exists:instructors,id',
+            'academic_year_id' => 'sometimes|exists:academic_years,id',
+            'hosting_company' => 'sometimes|nullable|string|max:255',
+            'location' => 'sometimes|nullable|string|max:255',
+        ]);
+
+        // Update the student with the validated data
+        $student->update($validatedData);
+
+        // Return a success response with the updated student data
+        return response()->json([
+            'message' => 'Student updated successfully',
+            'student' => $student
+        ]);
     }
 
-    // Validate the incoming request data
-    $validatedData = $request->validate([
-        'assigned_mentor_id' => 'sometimes|nullable|exists:instructors,id',
-        // Add other fields you want to allow updating
-    ]);
-
-    // Update the student with the validated data
-    $student->update($validatedData);
-
-    // Return a success response with the updated student data
-    return response()->json([
-        'message' => 'Student updated successfully',
-        'student' => $student
-    ]);
-}
 public function uploadCSV(Request $request)
 {
     Log::info('upload', ['request' => $request->all()]);
 
     $request->validate([
-        'file' => 'required|mimes:csv,txt,xlsx,xls'
+        'file' => 'required|mimes:csv,txt,xlsx,xls',
+        'academic_year_id' => 'required|exists:academic_years,id',
+        'department_id' => 'nullable|exists:departments,id'
     ]);
+
+    $academicYearId = $request->academic_year_id;
+    $requestDepartmentId = $request->department_id;
 
     $file = $request->file('file');
     $extension = strtolower($file->getClientOriginalExtension());
 
     $students = [];
 
-    // Define header mappings for common variations
     $headerMappings = [
-        'full_name' => ['full name', 'fullname', 'name', 'student name', 'Full Name'],
-        'department' => ['department', 'dept', 'department name', 'Department'],
-        'phone_number' => ['phone number', 'phone', 'contact number', 'mobile', 'phone_number', 'Phone Number', 'Mobile Number', 'Contact', 'Tel', 'Telephone'],
-        'sex' => ['sex', 'gender', 'Sex', 'Gender'],
-        'hosting_company' => ['hosting company', 'company', 'host company', 'Hosting Company'],
-        'location' => ['location', 'address', 'place', 'Location']
+        'full_name' => ['full name', 'fullname', 'name', 'student name'],
+        'department' => ['department', 'dept', 'department name'],
+        'phone_number' => ['phone number', 'phone', 'contact', 'mobile'],
+        'sex' => ['sex', 'gender'],
+        'hosting_company' => ['hosting company', 'company', 'host company'],
+        'location' => ['location', 'address', 'place']
     ];
 
-    // Function to map incoming headers to expected keys
     $mapHeader = function ($header) use ($headerMappings) {
-        $header = trim($header); // Remove leading/trailing spaces
-        $normalized = Str::slug(strtolower($header), '_'); // Normalize to slug (e.g., "phone number" -> "phone_number")
-        Log::debug('header_mapping', ['original' => $header, 'normalized' => $normalized]);
+        $normalized = Str::slug(strtolower(trim($header)), '_');
 
-        // Check if normalized header or original header matches any variation
         foreach ($headerMappings as $expected => $variations) {
             if ($normalized === $expected || in_array(strtolower($header), array_map('strtolower', $variations))) {
                 return $expected;
             }
         }
-        return $normalized; // Fallback to normalized header
+
+        return $normalized;
     };
 
     if (in_array($extension, ['csv', 'txt'])) {
-        // Handle CSV with League\Csv
         $csv = Reader::createFromPath($file->getRealPath(), 'r');
         $csv->setHeaderOffset(0);
 
         $rawHeaders = $csv->getHeader();
         $headers = array_map($mapHeader, $rawHeaders);
-        Log::info('csv_headers', ['raw' => $rawHeaders, 'mapped' => $headers]);
 
-        // Validate required headers
         if (!in_array('phone_number', $headers)) {
             return response()->json([
-                'message' => 'Missing required header for phone number. Expected one of: ' . implode(', ', $headerMappings['phone_number']),
+                'message' => 'Missing required phone number column',
                 'raw_headers' => $rawHeaders,
                 'mapped_headers' => $headers
             ], 400);
@@ -106,157 +111,134 @@ public function uploadCSV(Request $request)
 
         foreach ($csv->getRecords() as $record) {
             $normalized = array_combine($headers, array_values($record));
-            if (!$normalized) {
-                Log::warning('csv_record_skipped', ['record' => $record]);
-                continue;
-            }
+            if (!$normalized) continue;
 
-            $student = [
+            $students[] = [
                 'full_name' => $normalized['full_name'] ?? null,
-                'department' => $normalized['department'] ?? null,
+                'department_name' => $normalized['department'] ?? null,
                 'phone_number' => $normalized['phone_number'] ?? null,
                 'sex' => $normalized['sex'] ?? null,
                 'hosting_company' => $normalized['hosting_company'] ?? null,
                 'location' => $normalized['location'] ?? null,
             ];
-
-            if (!array_filter($student)) {
-                Log::info('csv_empty_student_skipped', ['student' => $student]);
-                continue;
-            }
-
-            $students[] = $student;
         }
     } elseif (in_array($extension, ['xlsx', 'xls'])) {
-        // Handle Excel with Laravel Excel
-        $data = Excel::toArray([], $file)[0]; // First sheet
-        Log::info('excel_raw_data', ['rows' => array_slice($data, 0, 5)]); // Log first 5 rows
+        $data = Excel::toArray([], $file)[0];
 
         if (empty($data) || count($data) < 2) {
-            return response()->json(['message' => 'Invalid Excel file format or empty file'], 400);
+            return response()->json(['message' => 'Empty Excel file or invalid format'], 400);
         }
 
-        $rawHeaders = array_shift($data); // First row is headers
+        $rawHeaders = array_shift($data);
         $headers = array_map($mapHeader, $rawHeaders);
-        Log::info('excel_headers', ['raw' => $rawHeaders, 'mapped' => $headers]);
-
-        // Validate required headers
-
 
         foreach ($data as $row) {
-            // Skip empty rows
-            if (empty(array_filter($row, fn($value) => !is_null($value) && trim($value) !== ''))) {
-                Log::info('excel_empty_row_skipped', ['row' => $row]);
-                continue;
-            }
-
-            // Pad row with nulls if shorter than headers
             $row = array_pad($row, count($headers), null);
             $normalized = array_combine($headers, $row);
-            if (!$normalized) {
-                Log::warning('excel_row_invalid', ['row' => $row]);
-                continue;
-            }
+            if (!$normalized) continue;
 
-            $student = [
+            $students[] = [
                 'full_name' => $normalized['full_name'] ?? null,
-                'department' => $normalized['department'] ?? null,
+                'department_name' => $normalized['department'] ?? null,
                 'phone_number' => $normalized['phone_number'] ?? null,
                 'sex' => $normalized['sex'] ?? null,
                 'hosting_company' => $normalized['hosting_company'] ?? null,
                 'location' => $normalized['location'] ?? null,
             ];
-
-            if (!array_filter($student)) {
-                Log::info('excel_empty_student_skipped', ['student' => $student]);
-                continue;
-            }
-
-            $students[] = $student;
         }
     }
 
-    Log::info('processed_students', ['students' => $students, 'count' => count($students)]);
-
-    // Save to DB
     foreach ($students as $studentData) {
-        if (empty($studentData['phone_number'])) {
-            Log::info('student_skipped_no_phone', ['student' => $studentData]);
-            continue;
+        if (empty($studentData['phone_number'])) continue;
+
+        // Determine department ID
+        $departmentId = null;
+
+        if ($requestDepartmentId) {
+            $departmentId = $requestDepartmentId;
+        } elseif (!empty($studentData['department_name'])) {
+            $department = \App\Models\Department::whereRaw('LOWER(name) = ?', [strtolower($studentData['department_name'])])->first();
+            if ($department) {
+                $departmentId = $department->id;
+            }
         }
 
-        Student::updateOrCreate(
-            ['phone_number' => $studentData['phone_number']],
-            [
-                'full_name' => $studentData['full_name'],
-                'department_id' => 1,
-                'sex' => $studentData['sex'],
-                'hosting_company' => $studentData['hosting_company'],
-                'location' => $studentData['location'],
-            ]
-        );
+        if (!$departmentId) continue; // Skip student if department ID is not found
+
+        Student::create([
+            'full_name' => $studentData['full_name'],
+            'phone_number' => $studentData['phone_number'],
+            'department_id' => $departmentId,
+            'academic_year_id' => $academicYearId,
+            'sex' => $studentData['sex'],
+            'hosting_company' => $studentData['hosting_company'],
+            'location' => $studentData['location'],
+        ]);
+
     }
 
-    return response()->json(['message' => 'File uploaded and students stored successfully']);
+    return response()->json(['message' => 'Students uploaded successfully.']);
 }
 
 
 
 
-public function assignMentors()
+
+
+public function assignMentors(Request $request)
 {
+    $request->validate([
+        'academic_year_id' => 'required|integer|exists:academic_years,id',
+        'department_id' => 'required|integer|exists:departments,id',
+    ]);
+
     try {
-        // Start a database transaction
         DB::beginTransaction();
 
-        // Get all students without an assigned mentor
-        $students = Student::whereNull('assigned_mentor_id')->get();
+        // Get students based on academic year and department, and no mentor assigned
+        $students = Student::where('academic_year_id', $request->academic_year_id)
+            ->where('department_id', $request->department_id)
+            ->whereNull('assigned_mentor_id')
+            ->get();
 
         if ($students->isEmpty()) {
             return response()->json(['message' => 'No students to assign mentors to.'], 400);
         }
 
-        // Get all available mentors
-        $availableMentors = Instructor::where('is_available', true)->get();
+        // Get mentors who are available and in the same department
+        $availableMentors = Instructor::where('is_available', true)
+            ->where('department_id', $request->department_id)
+            ->get();
 
         if ($availableMentors->isEmpty()) {
             return response()->json(['message' => 'No available mentors.'], 400);
         }
 
-        // Group students by hosting_company
+        // Group students by company
         $studentsByCompany = $students->groupBy('hosting_company')->map(function ($companyStudents) {
             return [
                 'students' => $companyStudents,
                 'count' => $companyStudents->count(),
             ];
-        })->sortByDesc('count'); // Sort by student count for larger groups first
+        })->sortByDesc('count');
 
         $totalCompanies = $studentsByCompany->count();
         $totalMentors = $availableMentors->count();
 
-        if ($totalMentors === 0) {
-            return response()->json(['message' => 'No mentors available to assign companies.'], 400);
-        }
-
-        // Calculate companies per mentor for proportional distribution
         $companiesPerMentor = floor($totalCompanies / $totalMentors);
         $remainingCompanies = $totalCompanies % $totalMentors;
 
-        // Initialize assignments
         $assignments = [];
-        $mentors = $availableMentors->shuffle(); // Randomize mentor order
+        $mentors = $availableMentors->shuffle();
         $mentorIndex = 0;
-        $companyCountAssigned = array_fill(0, $totalMentors, 0); // Track companies per mentor
+        $companyCountAssigned = array_fill(0, $totalMentors, 0);
 
-        // Assign company groups to mentors
         foreach ($studentsByCompany as $company => $companyData) {
-            // Assign to mentor with fewest companies
             $minCompanies = min($companyCountAssigned);
             $availableMentorIndices = array_keys($companyCountAssigned, $minCompanies);
-            $mentorIndex = $availableMentorIndices[array_rand($availableMentorIndices)]; // Randomly pick among least-assigned
+            $mentorIndex = $availableMentorIndices[array_rand($availableMentorIndices)];
             $mentor = $mentors[$mentorIndex];
 
-            // Assign all students in this company to the mentor
             foreach ($companyData['students'] as $student) {
                 $assignments[] = [
                     'student_id' => $student->id,
@@ -264,11 +246,9 @@ public function assignMentors()
                 ];
             }
 
-            // Update tracking
             $companyCountAssigned[$mentorIndex]++;
             if ($companyCountAssigned[$mentorIndex] >= $companiesPerMentor + ($remainingCompanies > 0 ? 1 : 0)) {
                 $remainingCompanies--;
-                // Optionally remove mentor if they have enough companies
                 unset($mentors[$mentorIndex]);
                 $mentors = $mentors->values();
                 $companyCountAssigned = array_values($companyCountAssigned);
@@ -276,13 +256,11 @@ public function assignMentors()
             }
         }
 
-        // Bulk update student assignments
         foreach ($assignments as $assignment) {
             Student::where('id', $assignment['student_id'])
                 ->update(['assigned_mentor_id' => $assignment['assigned_mentor_id']]);
         }
 
-        // Commit the transaction
         DB::commit();
 
         return response()->json([
@@ -292,12 +270,12 @@ public function assignMentors()
         ]);
 
     } catch (\Exception $e) {
-        // Roll back the transaction on error
         DB::rollBack();
         Log::error('Mentor assignment failed', ['error' => $e->getMessage()]);
         return response()->json(['message' => 'Failed to assign mentors', 'error' => $e->getMessage()], 500);
     }
 }
+
 
 
 }
