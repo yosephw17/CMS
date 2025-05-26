@@ -95,7 +95,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::apiResource('courses', CourseController::class);
 Route::post('/choices/bulk', [ChoiceController::class, 'bulkStore']);
-Route::apiResource('instructors', InstructorController::class)->middleware('permission:instructor-list');
+Route::apiResource('instructors', InstructorController::class);
 Route::get('assignments/latest', [AssignmentController::class, 'latest']);
 Route::post('/request', [RequestController::class,'store']);
 Route::post('/send-message', [MentorController::class,'store']);
@@ -116,6 +116,7 @@ Route::apiResource('results', ResultController::class);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::put('/me', [UserController::class, 'updateProfile']);
 
     Route::resource('evaluators', EvaluatorController::class);
 

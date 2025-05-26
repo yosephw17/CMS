@@ -7,6 +7,10 @@ use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\SendPasswordNotification;
+use Illuminate\Support\Facades\Auth;
+ use Illuminate\Validation\Rule;
+
 
 class UserController extends Controller
 {
@@ -47,6 +51,8 @@ class UserController extends Controller
             'email' => $request->input('email'),
             'password' => Hash::make($request->input('password')),
         ]);
+
+        $user->notify(new SendPasswordNotification($request->input('password')));
 
         Log::info("Request payload:", $request->all());
         $user->syncRoles($request->input('roles'));
@@ -97,5 +103,49 @@ class UserController extends Controller
             'success' => true,
             'message' => 'User deleted successfully.',
         ]);
+    }
+
+
+    public function updateProfile(Request $request)
+    {
+        // Get the authenticated user
+        $user = Auth::user();
+
+        // Validate the request
+        $validated = $request->validate([
+            'current_password' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) use ($user) {
+                    if (!Hash::check($value, $user->password)) {
+                        $fail('The current password is incorrect.');
+                    }
+                },
+            ],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        // Update only provided fields
+        if ($request->has('name')) {
+            $user->name = $validated['name'];
+        }
+
+        if ($request->has('email')) {
+            $user->email = $validated['email'];
+        }
+
+        if ($request->has('password')) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        // Save the changes
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user->only(['id', 'name', 'email']),
+        ], 200);
     }
 }

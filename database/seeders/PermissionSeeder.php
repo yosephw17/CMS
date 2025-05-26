@@ -12,162 +12,126 @@ class PermissionSeeder extends Seeder
         $permissions = [
             // Building permissions
             'building-create',
-            'building-read',
+            'building-view',
             'building-update',
             'building-delete',
 
             // Choice permissions
-            'choice-read',
-
+            'choice-view',
 
             // Course permissions
             'course-create',
-            'course-read',
+            'course-view',
             'course-update',
             'course-delete',
 
-
-
-
-
-
             // EducationalBackground permissions
             'educational-background-create',
-            'educational-background-read',
+            'educational-background-view',
             'educational-background-update',
             'educational-background-delete',
 
-
-
-
-
-
-
-
-
-
-            // efficiency permissions
+            // Efficiency permissions
             'efficiency-create',
-            'efficiency-read',
+            'efficiency-view',
             'efficiency-update',
             'efficiency-delete',
 
             // Field permissions
             'field-create',
-            'field-read',
+            'field-view',
             'field-update',
             'field-delete',
 
-
             // GuestInstructor permissions
             'guest-instructor-create',
-            'guest-instructor-read',
+            'guest-instructor-view',
             'guest-instructor-update',
             'guest-instructor-delete',
 
-
             // Instructor permissions
             'instructor-create',
-            'instructor-read',
+            'instructor-view',
             'instructor-update',
             'instructor-delete',
 
             // InstructorRole permissions
             'instructor-role-create',
-            'instructor-role-read',
+            'instructor-role-view',
             'instructor-role-update',
             'instructor-role-delete',
 
-
-
-
             // Parameter permissions
             'parameter-create',
-            'parameter-read',
+            'parameter-view',
             'parameter-update',
             'parameter-delete',
 
             // ProfessionalExperience permissions
             'professional-experience-create',
-            'professional-experience-read',
+            'professional-experience-view',
             'professional-experience-update',
             'professional-experience-delete',
 
             // QualityAssuranceEvaluator permissions
             'quality-assurance-create',
-            'quality-assurance-read',
+            'quality-assurance-view',
             'quality-assurance-update',
             'quality-assurance-delete',
 
-
-
-
-
-
             // Research permissions
             'research-create',
-            'research-read',
+            'research-view',
             'research-update',
             'research-delete',
 
-
-
             // Role permissions
             'role-create',
-            'role-read',
+            'role-view',
             'role-update',
             'role-delete',
 
             // Room permissions
             'room-create',
-            'room-read',
+            'room-view',
             'room-update',
             'room-delete',
 
             // Schedule permissions
             'schedule-create',
-            'schedule-read',
+            'schedule-view',
             'schedule-update',
             'schedule-delete',
 
-            // ScheduleResult permissions
-
-
-
-
             // Section permissions
             'section-create',
-            'section-read',
+            'section-view',
             'section-update',
             'section-delete',
 
             // Semester permissions
             'semester-create',
-            'semester-read',
+            'semester-view',
             'semester-update',
             'semester-delete',
 
-
-
-
-
             // Timeslot permissions
             'timeslot-create',
-            'timeslot-read',
+            'timeslot-view',
             'timeslot-update',
             'timeslot-delete',
 
             // User permissions
             'user-create',
-            'user-read',
+            'user-view',
             'user-update',
             'user-delete',
 
-
+            'assign-mentor',
 
             // YearSemesterCourse permissions
             'year-semester-course-create',
-            'year-semester-course-read',
+            'year-semester-course-view',
             'year-semester-course-update',
             'year-semester-course-delete',
         ];
