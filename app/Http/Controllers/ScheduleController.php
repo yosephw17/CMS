@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\Day;
 use App\Models\ScheduleResult;
+use App\Models\Activity;
 use App\Models\TimeSlot;
 use App\Services\SchedulingService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 use Illuminate\Http\Request;
 
@@ -44,7 +46,10 @@ class ScheduleController extends Controller
             'year' => $request->year,
             'semester_id' => $request->semester_id,
         ]);
-
+  Activity::create([
+            'name' => "Created schedule for year: {$request->year}, semester: {$request->semester_id}",
+            'user_id' => Auth::id(),
+        ]);
         return response()->json([
             'message' => 'Schedule created successfully.',
             'data' => $schedule

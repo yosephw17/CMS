@@ -55,6 +55,7 @@ use App\Http\Controllers\StreamController;
 use App\Http\Controllers\LoadDistributionController;
 use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\QualityAssuranceEvaluatorController;
+use App\Http\Controllers\ActivitiesController;
 
 
 
@@ -187,5 +188,5 @@ Route::apiResource('rooms', RoomController::class);
     Route::get('load-distributions/list', [LoadDistributionController::class, 'list']);
     Route::post('load-distributions/generate', [LoadDistributionController::class, 'generate']);});
 Route::get('/load-distribution-results', [LoadDistributionController::class, 'getResults']);
-
-Route::get('/buildings', [BuildingController::class, 'index']);
+    Route::apiResource('buildings', BuildingController::class);
+    Route::apiResource('activities', ActivitiesController::class);

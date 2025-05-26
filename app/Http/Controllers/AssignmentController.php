@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Assignment;
 use App\Models\Result;
+use App\Models\Activity;
 use App\Services\CourseAssignmentService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class AssignmentController extends Controller
 {
@@ -58,7 +60,10 @@ class AssignmentController extends Controller
             'semester_id' => $request->semester_id,
             'department_id'=>$request->department_id,
         ]);
-    
+        Activity::create([
+            'name' => "Created assignment for year: {$request->year}, semester: {$request->semester_id}",
+            'user_id' => Auth::id(),
+        ]);
         return response()->json(['success' => 'Assignment created successfully.', 'assignment' => $assignment], 201);
     }
     

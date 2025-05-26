@@ -11,10 +11,12 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Assignment;
 use App\Models\Result;
+use App\Models\Activity;
 use App\Services\LoadCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class LoadDistributionController extends Controller
 {
@@ -164,7 +166,10 @@ public function create(Request $request)
 
             $createdResults[] = $resultRecord;
         }
-
+  Activity::create([
+            'name' => "Load generated for year: {$request->year}, semester: {$request->semester_id}",
+            'user_id' => Auth::id(),
+        ]);
         return response()->json([
             'load_distribution' => $distribution,
             'results' => $createdResults,
