@@ -35,6 +35,7 @@ class CourseController extends Controller
             'cp' => 'required|integer',
             'lecture_cp' => 'nullable|integer',
             'lab_cp' => 'nullable|integer',
+            'tut_cp' => 'nullable|integer',
             'department_id' => 'nullable|integer',
             'fields' => 'nullable|array', // Validate that fields is an array
             'fields.*' => 'exists:fields,id' // Each field must exist in the fields table
@@ -84,6 +85,7 @@ Log::info("message", [$request->all()]);
             'cp' => 'required|integer',
             'lecture_cp' => 'nullable|integer',
             'lab_cp' => 'nullable|integer',
+            'tut_cp' => 'nullable|integer',
             'department_id'=>'nullable|integer',
             'fields' => 'nullable|array',
             'fields.*' => 'exists:fields,id'

@@ -13,6 +13,9 @@
     "dependencies": {
         "@coreui/icons": "^3.0.1",
         "@coreui/icons-vue": "^2.2.0",
-        "@coreui/vue": "^5.4.1"
+        "@coreui/vue": "^5.4.1",
+        "file-saver": "^2.0.5",
+        "jspdf": "^3.0.1",
+        "jspdf-autotable": "^5.0.2"
     }
 }

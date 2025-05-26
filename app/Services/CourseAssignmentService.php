@@ -14,17 +14,6 @@ use Illuminate\Support\Facades\Log;
 
 class CourseAssignmentService
 {
-    /**
-     * Assign courses in three phases: lectures, lab lectures, and lab assistants.
-     * - Courses with lab_cp > 0 have three types of assignments:
-     *   - Lecture (type='lecture', using course.lecture_cp, lecture instructors).
-     *   - Lab (type='lab', using course.lab_cp, lecture instructors).
-     *   - Lab Assistant (type='lab_assistant', using course.lab_cp, lab assistants).
-     * - Courses with lab_cp <= 0 have one assignment:
-     *   - Lecture (type='lecture', using course.cp, lecture instructors).
-     * - Lab and lab assistant assignments have separate quotas (max_assignments).
-     * Assignments are processed sequentially: lectures, then lab lectures, then lab assistants.
-     */
     public function assignCourses($assignment_id)
     {
         DB::beginTransaction();
@@ -131,33 +120,38 @@ class CourseAssignmentService
                     'cp' => $course->cp,
                     'lecture_cp' => $course->lecture_cp,
                     'lab_cp' => $course->lab_cp,
+                    'tut_cp' => $course->tut_cp,
                     'assignment_types' => $course->lab_cp > 0 ? ['lecture', 'lab', 'lab_assistant'] : ['lecture'],
                     'lecture_credit_used' => $course->lab_cp > 0 ? 'lecture_cp' : 'cp',
                 ]);
             }
 
-            // Get section counts by year_id
+            // Get sections by year_id
             $yearIds = $yearSemesterCourses->pluck('year_id')->unique()->filter()->values();
-            $sectionsCountByYear = Section::whereIn('year_id', $yearIds)
+            $sectionsByYear = Section::whereIn('year_id', $yearIds)
                 ->where('department_id', $department_id)
-                ->groupBy('year_id')
-                ->select('year_id', DB::raw('COUNT(*) as count'))
                 ->get()
-                ->keyBy('year_id')
-                ->map(function ($item) {
-                    return $item->count;
-                });
+                ->groupBy('year_id');
+            $sectionsCountByYear = $sectionsByYear->map->count();
 
-            Log::info("Sections count by year:", $sectionsCountByYear->toArray());
+            Log::info("Sections by year:", [
+                'year_ids' => $yearIds->toArray(),
+                'sections_by_year' => $sectionsByYear->map(function ($sections) {
+                    return $sections->map(function ($section) {
+                        return ['id' => $section->id, 'year_id' => $section->year_id];
+                    })->toArray();
+                })->toArray(),
+                'sections_count_by_year' => $sectionsCountByYear->toArray(),
+            ]);
 
             $courseOccurrences = $yearSemesterCourses->groupBy('course_id')->map->count();
             $instructorScores = [];
             $assignedResults = [];
             $instructorLoad = [];
             $assignedCourses = [];
-            $assignedLabLectures = []; // Separate counter for lab lecture assignments
-            $assignedLabAssistants = []; // Separate counter for lab assistant assignments
-            $lectureAssignments = []; // Track lecture assignments for lab lecture preference
+            $assignedLabLectures = [];
+            $assignedLabAssistants = [];
+            $lectureAssignments = [];
             $allResults = [];
 
             // Helper function to calculate instructor score
@@ -234,8 +228,20 @@ class CourseAssignmentService
                 ];
             };
 
+            // Helper function to get any available section
+            $getAnySection = function ($year_id) use ($sectionsByYear) {
+                $sections = $sectionsByYear->get($year_id, collect([]));
+                $section_id = $sections->isNotEmpty() ? $sections->first()->id : null;
+                Log::info("getAnySection called:", [
+                    'year_id' => $year_id,
+                    'sections_count' => $sections->count(),
+                    'section_id' => $section_id,
+                    'available_sections' => $sections->pluck('id')->toArray(),
+                ]);
+                return $section_id;
+            };
+
             // Phase 1: Assign Lectures
-            Log::info("Phase 1: Assigning lectures (type='lecture')");
             foreach ($lectureInstructors as $instructor) {
                 foreach ($yearSemesterCourses as $yearSemesterCourse) {
                     $course = $yearSemesterCourse->course;
@@ -245,8 +251,7 @@ class CourseAssignmentService
                         continue;
                     }
 
-                    // Determine credit points based on lab_cp
-                    $cp = $course->lab_cp > 0 ? $course->lecture_cp : $course->cp;
+                    $cp = $course->lab_cp > 0 ? ($course->lecture_cp + $course->tut_cp) : $course->cp;
                     if ($cp <= 0) {
                         continue;
                     }
@@ -299,7 +304,7 @@ class CourseAssignmentService
                 $instructor = Instructor::find($instructorData['instructor_id']);
                 $loadCapacity = $instructor->role->load;
                 $currentLoad = $instructorLoad[$instructor->id] ?? 0;
-                $cp = $course->lab_cp > 0 ? $course->lecture_cp : $course->cp;
+                $cp = $course->lab_cp > 0 ? ($course->lecture_cp + $course->tut_cp) : $course->cp;
 
                 if (!isset($allResults[$instructorData['course_id']]['lecture'])) {
                     $allResults[$instructorData['course_id']]['lecture'] = [];
@@ -327,6 +332,7 @@ class CourseAssignmentService
                 if (!$existingResult) {
                     $is_assigned = 0;
                     $reason = '';
+                    $section_id = null;
 
                     $hasHigherPreference = false;
                     foreach ($yearSemesterCourses as $otherYearSemesterCourse) {
@@ -346,23 +352,45 @@ class CourseAssignmentService
 
                     $baseAssignments = $courseOccurrences[$course->id] ?? 1;
                     $sectionsCount = $sectionsCountByYear->get($yearSemesterCourse->year_id, 0);
-                    $maxAssignments = $baseAssignments + $sectionsCount;
+                    $maxAssignments = $baseAssignments + ($sectionsCount > 1 ? $sectionsCount : 0);
                     $currentAssignments = $assignedCourses[$course->id] ?? 0;
+
+                    Log::info("Lecture assignment pre-check:", [
+                        'course_id' => $course->id,
+                        'year_id' => $yearSemesterCourse->year_id,
+                        'instructor_id' => $instructor->id,
+                        'current_load' => $currentLoad,
+                        'cp' => $cp,
+                        'load_capacity' => $loadCapacity,
+                        'has_higher_preference' => $hasHigherPreference,
+                        'current_assignments' => $currentAssignments,
+                        'max_assignments' => $maxAssignments,
+                        'sections_count' => $sectionsCount,
+                    ]);
 
                     if ($currentLoad + $cp <= $loadCapacity && !$hasHigherPreference && $currentAssignments < $maxAssignments) {
                         $is_assigned = 1;
+                        $section_id = $getAnySection($yearSemesterCourse->year_id);
+                        
                         $instructorLoad[$instructor->id] = $currentLoad + $cp;
                         $assignedCourses[$course->id] = ($assignedCourses[$course->id] ?? 0) + 1;
                         $lectureAssignments[$course->id][] = $instructor->id;
                         $reason = "Assigned: High score ({$instructorData['score']}) and within load capacity (added {$cp} {$instructorData['credit_type']} credits).";
-                        if ($instructorData['previous_instructor_id'] == $instructor->id) {
-                            $reason .= " Previously taught by this instructor.";
-                        }
+                      
                     } elseif (!$hasHigherPreference && $currentLoad + $cp > $loadCapacity) {
                         $reason = "Not assigned: Exceeds instructor load capacity ({$currentLoad} + {$cp} > {$loadCapacity}).";
                     } elseif (!$hasHigherPreference && $currentAssignments >= $maxAssignments) {
                         $reason = "Not assigned: Maximum assignments reached for course (current: {$currentAssignments}, max: {$maxAssignments}).";
                     }
+
+                    Log::info("Lecture assignment post-check:", [
+                        'course_id' => $course->id,
+                        'year_id' => $yearSemesterCourse->year_id,
+                        'instructor_id' => $instructor->id,
+                        'is_assigned' => $is_assigned,
+                        'section_id' => $section_id,
+                        'reason' => $reason,
+                    ]);
 
                     $result = Result::create([
                         'instructor_id' => $instructor->id,
@@ -371,6 +399,7 @@ class CourseAssignmentService
                         'point' => $instructorData['score'],
                         'is_assigned' => $is_assigned,
                         'stream_id' => $yearSemesterCourse->stream_id,
+                        'section_id' => $is_assigned ? $section_id : null,
                         'previous_instructor_id' => $instructorData['previous_instructor_id'],
                         'reason' => $reason,
                         'type' => 'lecture',
@@ -382,6 +411,7 @@ class CourseAssignmentService
                         'instructor' => $instructor->name,
                         'stream_id' => $yearSemesterCourse->stream_id,
                         'stream_name' => $yearSemesterCourse->stream ? $yearSemesterCourse->stream->name : 'None',
+                        'section_id' => $section_id,
                         'base_assignments' => $baseAssignments,
                         'sections_count' => $sectionsCount,
                         'max_assignments' => $maxAssignments,
@@ -416,10 +446,10 @@ class CourseAssignmentService
                     $scoreData = $calculateScore($instructor, $course, $assignment_id, $parameters);
                     $priorityBoost = $scoreData['priority_boost'];
                     if (isset($lectureAssignments[$course->id]) && in_array($instructor->id, $lectureAssignments[$course->id])) {
-                        $priorityBoost += 10; // Boost for instructors already assigned to lecture
+                        $priorityBoost += 10;
                     }
                     if (!isset($instructorLoad[$instructor->id]) || $instructorLoad[$instructor->id] == 0) {
-                        $priorityBoost += 5; // Boost for instructors with no assignments
+                        $priorityBoost += 5;
                     }
 
                     $instructorScores[] = [
@@ -495,6 +525,7 @@ class CourseAssignmentService
                 if (!$existingResult) {
                     $is_assigned = 0;
                     $reason = '';
+                    $section_id = null;
 
                     $hasHigherPreference = false;
                     foreach ($yearSemesterCourses as $otherYearSemesterCourse) {
@@ -514,11 +545,25 @@ class CourseAssignmentService
 
                     $baseAssignments = $courseOccurrences[$course->id] ?? 1;
                     $sectionsCount = $sectionsCountByYear->get($yearSemesterCourse->year_id, 0);
-                    $maxAssignments = $baseAssignments + $sectionsCount;
+                    $maxAssignments = $baseAssignments + ($sectionsCount > 1 ? $sectionsCount : 0);
                     $currentAssignments = $assignedLabLectures[$course->id] ?? 0;
+
+                    Log::info("Lab lecture assignment pre-check:", [
+                        'course_id' => $course->id,
+                        'year_id' => $yearSemesterCourse->year_id,
+                        'instructor_id' => $instructor->id,
+                        'current_load' => $currentLoad,
+                        'cp' => $cp,
+                        'load_capacity' => $loadCapacity,
+                        'has_higher_preference' => $hasHigherPreference,
+                        'current_assignments' => $currentAssignments,
+                        'max_assignments' => $maxAssignments,
+                        'sections_count' => $sectionsCount,
+                    ]);
 
                     if ($currentLoad + $cp <= $loadCapacity && !$hasHigherPreference && $currentAssignments < $maxAssignments) {
                         $is_assigned = 1;
+                        $section_id = $getAnySection($yearSemesterCourse->year_id);
                         $instructorLoad[$instructor->id] = $currentLoad + $cp;
                         $assignedLabLectures[$course->id] = ($assignedLabLectures[$course->id] ?? 0) + 1;
                         $reason = "Assigned: High score ({$instructorData['score']}) and within load capacity (added {$cp} lab credits).";
@@ -530,11 +575,25 @@ class CourseAssignmentService
                         if ($instructorData['previous_instructor_id'] == $instructor->id) {
                             $reason .= " Previously taught by this instructor.";
                         }
+                        if ($section_id) {
+                            $reason .= " Assigned to section ID: {$section_id}.";
+                        } else {
+                            $reason .= " No section assigned (no sections available).";
+                        }
                     } elseif (!$hasHigherPreference && $currentLoad + $cp > $loadCapacity) {
                         $reason = "Not assigned: Exceeds instructor load capacity ({$currentLoad} + {$cp} > {$loadCapacity}).";
                     } elseif (!$hasHigherPreference && $currentAssignments >= $maxAssignments) {
                         $reason = "Not assigned: Maximum assignments reached for course (current: {$currentAssignments}, max: {$maxAssignments}).";
                     }
+
+                    Log::info("Lab lecture assignment post-check:", [
+                        'course_id' => $course->id,
+                        'year_id' => $yearSemesterCourse->year_id,
+                        'instructor_id' => $instructor->id,
+                        'is_assigned' => $is_assigned,
+                        'section_id' => $section_id,
+                        'reason' => $reason,
+                    ]);
 
                     $result = Result::create([
                         'instructor_id' => $instructor->id,
@@ -543,6 +602,7 @@ class CourseAssignmentService
                         'point' => $instructorData['score'],
                         'is_assigned' => $is_assigned,
                         'stream_id' => $yearSemesterCourse->stream_id,
+                        'section_id' => $is_assigned ? $section_id : null,
                         'previous_instructor_id' => $instructorData['previous_instructor_id'],
                         'reason' => $reason,
                         'type' => 'lab',
@@ -554,6 +614,7 @@ class CourseAssignmentService
                         'instructor' => $instructor->name,
                         'stream_id' => $yearSemesterCourse->stream_id,
                         'stream_name' => $yearSemesterCourse->stream ? $yearSemesterCourse->stream->name : 'None',
+                        'section_id' => $section_id,
                         'base_assignments' => $baseAssignments,
                         'sections_count' => $sectionsCount,
                         'max_assignments' => $maxAssignments,
@@ -659,6 +720,7 @@ class CourseAssignmentService
                 if (!$existingResult) {
                     $is_assigned = 0;
                     $reason = '';
+                    $section_id = null;
 
                     $hasHigherPreference = false;
                     foreach ($yearSemesterCourses as $otherYearSemesterCourse) {
@@ -678,22 +740,50 @@ class CourseAssignmentService
 
                     $baseAssignments = $courseOccurrences[$course->id] ?? 1;
                     $sectionsCount = $sectionsCountByYear->get($yearSemesterCourse->year_id, 0);
-                    $maxAssignments = $baseAssignments + $sectionsCount;
+                    $maxAssignments = $baseAssignments + ($sectionsCount > 1 ? $sectionsCount : 0);
                     $currentAssignments = $assignedLabAssistants[$course->id] ?? 0;
+
+                    Log::info("Lab assistant assignment pre-check:", [
+                        'course_id' => $course->id,
+                        'year_id' => $yearSemesterCourse->year_id,
+                        'instructor_id' => $instructor->id,
+                        'current_load' => $currentLoad,
+                        'cp' => $cp,
+                        'load_capacity' => $loadCapacity,
+                        'has_higher_preference' => $hasHigherPreference,
+                        'current_assignments' => $currentAssignments,
+                        'max_assignments' => $maxAssignments,
+                        'sections_count' => $sectionsCount,
+                    ]);
 
                     if ($currentLoad + $cp <= $loadCapacity && !$hasHigherPreference && $currentAssignments < $maxAssignments) {
                         $is_assigned = 1;
+                        $section_id = $getAnySection($yearSemesterCourse->year_id);
                         $instructorLoad[$instructor->id] = $currentLoad + $cp;
                         $assignedLabAssistants[$course->id] = ($assignedLabAssistants[$course->id] ?? 0) + 1;
                         $reason = "Assigned: High score ({$instructorData['score']}) and within load capacity (added {$cp} lab assistant credits).";
                         if ($instructorData['previous_instructor_id'] == $instructor->id) {
                             $reason .= " Previously taught by this instructor.";
                         }
+                        if ($section_id) {
+                            $reason .= " Assigned to section ID: {$section_id}.";
+                        } else {
+                            $reason .= " No section assigned (no sections available).";
+                        }
                     } elseif (!$hasHigherPreference && $currentLoad + $cp > $loadCapacity) {
                         $reason = "Not assigned: Exceeds instructor load capacity ({$currentLoad} + {$cp} > {$loadCapacity}).";
                     } elseif (!$hasHigherPreference && $currentAssignments >= $maxAssignments) {
                         $reason = "Not assigned: Maximum assignments reached for course (current: {$currentAssignments}, max: {$maxAssignments}).";
                     }
+
+                    Log::info("Lab assistant assignment post-check:", [
+                        'course_id' => $course->id,
+                        'year_id' => $yearSemesterCourse->year_id,
+                        'instructor_id' => $instructor->id,
+                        'is_assigned' => $is_assigned,
+                        'section_id' => $section_id,
+                        'reason' => $reason,
+                    ]);
 
                     $result = Result::create([
                         'instructor_id' => $instructor->id,
@@ -702,6 +792,7 @@ class CourseAssignmentService
                         'point' => $instructorData['score'],
                         'is_assigned' => $is_assigned,
                         'stream_id' => $yearSemesterCourse->stream_id,
+                        'section_id' => $is_assigned ? $section_id : null,
                         'previous_instructor_id' => $instructorData['previous_instructor_id'],
                         'reason' => $reason,
                         'type' => 'lab_assistant',
@@ -713,6 +804,7 @@ class CourseAssignmentService
                         'instructor' => $instructor->name,
                         'stream_id' => $yearSemesterCourse->stream_id,
                         'stream_name' => $yearSemesterCourse->stream ? $yearSemesterCourse->stream->name : 'None',
+                        'section_id' => $section_id,
                         'base_assignments' => $baseAssignments,
                         'sections_count' => $sectionsCount,
                         'max_assignments' => $maxAssignments,

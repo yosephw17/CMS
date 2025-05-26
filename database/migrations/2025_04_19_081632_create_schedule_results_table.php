@@ -13,7 +13,9 @@ return new class extends Migration
         Schema::create('schedule_results', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('course_id');
-            $table->unsignedBigInteger('instructor_id');
+            $table->unsignedBigInteger('instructor_id')->nullable();
+            $table->unsignedBigInteger('guest_instructor_id')->nullable();
+
             $table->unsignedBigInteger('schedule_id');
             $table->unsignedBigInteger('section_id');
             $table->unsignedBigInteger('room_id');
@@ -26,6 +28,8 @@ return new class extends Migration
             $table->foreign('schedule_id')->references('id')->on('schedules')->onDelete('cascade');
             $table->foreign('section_id')->references('id')->on('sections')->onDelete('cascade');
             $table->foreign('room_id')->references('id')->on('rooms')->onDelete('cascade');
+            $table->foreign('guest_instructor_id')->references('id')->on('guest_instructors')->onDelete('set null');
+
         });
     }
 

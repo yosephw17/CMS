@@ -15,19 +15,18 @@ class Instructor extends Model
         'email',
         'phone',
         'role_id',
+        'academic_rank',
         'department_id',
         'is_available',
         'is_studying',
         'is_approved',
+        'is_mentor',
+        'studying',
     ];
 
     public function role()
     {
         return $this->belongsTo(InstructorRole::class);
-    }
-    public function isLabAssistant()
-    {
-        return $this->role_id === InstructorRole::lab_assistance;
     }
     public function department()
     {

@@ -12,6 +12,7 @@ use App\Models\ScheduleResult;
 use App\Models\ScheduleTimeSlot;
 use App\Models\Section;
 use App\Models\Stream;
+use App\Models\GuestInstructor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,17 +20,11 @@ class SchedulingService
 {
     public function generateSchedule($scheduleId)
     {
-        Log::info('Starting schedule generation', ['schedule_id' => $scheduleId]);
-
         DB::beginTransaction();
         try {
-            // Step 1: Fetch the schedule
             $schedule = Schedule::findOrFail($scheduleId);
             $year = $schedule->year;
             $semesterId = $schedule->semester_id;
-            Log::info('Schedule fetched', ['year' => $year, 'semester_id' => $semesterId]);
-
-            // Step 2: Fetch streams to determine active streams
             $streams = Stream::all()->keyBy('id')->mapWithKeys(function ($stream) {
                 return [$stream->id => [
                     'department_id' => $stream->department_id,
@@ -38,20 +33,6 @@ class SchedulingService
                     'name' => $stream->name,
                 ]];
             });
-            Log::info('Streams fetched', ['total_streams' => $streams->count()]);
-
-            // Step 3: Fetch and group courses by semester, department, year, and stream
-            Log::debug('Course fetch query', [
-                'sql' => YearSemesterCourse::where('year_semester_courses.semester_id', $semesterId)
-                    ->has('course')
-                    ->join('years', function ($join) {
-                        $join->on('year_semester_courses.year_id', '=', 'years.id')
-                             ->whereColumn('year_semester_courses.department_id', 'years.department_id');
-                    })
-                    ->leftJoin('streams', 'year_semester_courses.stream_id', '=', 'streams.id')
-                    ->toSql(),
-                'bindings' => [$semesterId]
-            ]);
 
             $courses = YearSemesterCourse::where('year_semester_courses.semester_id', $semesterId)
                 ->has('course')
@@ -83,7 +64,7 @@ class SchedulingService
                 ->get()
                 ->filter(function ($course) use ($year, $semesterId) {
                     if (!$course->stream_id) {
-                        return true; // Non-stream courses
+                        return true;
                     }
                     if (!$course->stream) {
                         Log::warning('Course with invalid stream_id', [
@@ -209,7 +190,7 @@ class SchedulingService
                                     'stream_name' => $course->stream ? $course->stream->name : 'None',
                                 ]);
 
-                                // Step 9: Fetch instructors
+                                // Step 9: Fetch instructors from results table
                                 $results = Result::where('results.course_id', $course->course_id)
                                     ->where(function ($query) use ($streamId) {
                                         if ($streamId !== 'null') {
@@ -233,15 +214,36 @@ class SchedulingService
                                     'results' => $results->toArray(),
                                 ]);
 
+                                // Step 10: Check for guest instructors if no results found
+                                $guestInstructors = collect();
                                 if ($results->isEmpty()) {
-                                    Log::warning('No instructors found', [
+                                    $guestInstructors = GuestInstructor::where('course_id', $course->course_id)
+                                        ->where('schedule_id', $scheduleId)
+                                        ->get();
+                                    Log::info('Fetched guest instructors for course', [
+                                        'course_id' => $course->course_id,
+                                        'schedule_id' => $scheduleId,
+                                        'guest_instructors_count' => $guestInstructors->count(),
+                                        'guest_instructors' => $guestInstructors->map(function ($guest) {
+                                            return [
+                                                'id' => $guest->id,
+                                                'name' => $guest->name,
+                                                'course_id' => $guest->course_id,
+                                                'schedule_id' => $guest->schedule_id,
+                                            ];
+                                        })->toArray(),
+                                    ]);
+                                }
+
+                                if ($results->isEmpty() && $guestInstructors->isEmpty()) {
+                                    Log::warning('No instructors or guest instructors found', [
                                         'course_id' => $course->course_id,
                                         'stream_id' => $course->stream_id,
                                     ]);
                                     continue;
                                 }
 
-                                // Step 10: Get section ID for the course
+                                // Step 11: Get section ID for the course
                                 $sectionId = $this->getSectionId($course, $yearId, $departmentId, $streamId === 'null' ? null : $streamId, $year);
                                 Log::debug('Retrieved section ID', [
                                     'course_id' => $course->course_id,
@@ -261,7 +263,7 @@ class SchedulingService
                                     continue;
                                 }
 
-                                // Step 11: Handle lecture and lab
+                                // Step 12: Handle lecture and lab
                                 $types = [
                                     'lecture' => [
                                         'cp' => $course->course->lecture_cp,
@@ -286,66 +288,139 @@ class SchedulingService
                                     $slotGroups = $this->planSlotGroups($requiredSlots, $type);
                                     $allSlotsAssigned = [];
                                     $instructorId = null;
+                                    $guestInstructorId = null;
+                                    $instructorName = null; // For logging
                                     $roomId = null;
                                     $assigned = false;
 
-                                    foreach ($results as $result) {
-                                        $instructorId = $result->instructor_id;
+                                    if ($results->isNotEmpty()) {
+                                        // Regular instructor assignment
+                                        foreach ($results as $result) {
+                                            $instructorId = $result->instructor_id;
+                                            $instructorName = $result->instructor->name;
 
-                                        // Prioritize preferred room, fall back to all rooms
-                                        $availableRooms = $config['preferred_room_id'] && $rooms->has($config['preferred_room_id'])
-                                            ? $rooms->only($config['preferred_room_id'])
-                                            : $rooms;
+                                            // Prioritize preferred room, fall back to all rooms
+                                            $availableRooms = $config['preferred_room_id'] && $rooms->has($config['preferred_room_id'])
+                                                ? $rooms->only($config['preferred_room_id'])
+                                                : $rooms;
 
-                                        foreach ($availableRooms as $room) {
-                                            $roomId = $room->id;
-                                            $allSlotsAssigned = [];
+                                            foreach ($availableRooms as $room) {
+                                                $roomId = $room->id;
+                                                $allSlotsAssigned = [];
 
-                                            // Try to assign all slots in one group on one day
-                                            $slotsAssigned = $this->assignConsecutiveSlots(
-                                                $timeSlotsByDay,
-                                                $requiredSlots,
-                                                $instructorId,
-                                                $roomId,
-                                                $instructorUnavailability,
-                                                $scheduledAssignments,
-                                                $courseDaysUsed[$course->course_id] ?? [],
-                                                $course->course_id,
-                                                $sectionId,
-                                                $course->stream_id
-                                            );
+                                                // Try to assign all slots in one group on one day
+                                                $slotsAssigned = $this->assignConsecutiveSlots(
+                                                    $timeSlotsByDay,
+                                                    $requiredSlots,
+                                                    $instructorId,
+                                                    $roomId,
+                                                    $instructorUnavailability,
+                                                    $scheduledAssignments,
+                                                    $courseDaysUsed[$course->course_id] ?? [],
+                                                    $course->course_id,
+                                                    $sectionId,
+                                                    $course->stream_id
+                                                );
 
-                                            if ($slotsAssigned) {
-                                                $allSlotsAssigned = $slotsAssigned;
-                                                $dayId = $timeSlotsById[$slotsAssigned[0]]->day_id;
-                                                Log::info('Assigned slot group', [
-                                                    'course_id' => $course->course_id,
-                                                    'type' => $type,
-                                                    'slots_needed' => $requiredSlots,
-                                                    'time_slot_ids' => $slotsAssigned,
-                                                    'day_id' => $dayId,
-                                                    'instructor_id' => $instructorId,
-                                                    'room_id' => $roomId,
-                                                    'section_id' => $sectionId,
-                                                    'stream_id' => $course->stream_id,
-                                                ]);
-                                                $assigned = true;
+                                                if ($slotsAssigned) {
+                                                    $allSlotsAssigned = $slotsAssigned;
+                                                    $dayId = $timeSlotsById[$slotsAssigned[0]]->day_id;
+                                                    Log::info('Assigned slot group for regular instructor', [
+                                                        'course_id' => $course->course_id,
+                                                        'type' => $type,
+                                                        'slots_needed' => $requiredSlots,
+                                                        'time_slot_ids' => $slotsAssigned,
+                                                        'day_id' => $dayId,
+                                                        'instructor_id' => $instructorId,
+                                                        'instructor_name' => $instructorName,
+                                                        'room_id' => $roomId,
+                                                        'section_id' => $sectionId,
+                                                        'stream_id' => $course->stream_id,
+                                                    ]);
+                                                    $assigned = true;
+                                                    break;
+                                                } else {
+                                                    Log::warning('Failed to assign slot group for regular instructor', [
+                                                        'course_id' => $course->course_id,
+                                                        'type' => $type,
+                                                        'slots_needed' => $requiredSlots,
+                                                        'instructor_id' => $instructorId,
+                                                        'instructor_name' => $instructorName,
+                                                        'room_id' => $roomId,
+                                                        'section_id' => $sectionId,
+                                                        'stream_id' => $course->stream_id,
+                                                    ]);
+                                                }
+                                            }
+
+                                            if ($assigned) {
                                                 break;
-                                            } else {
-                                                Log::warning('Failed to assign slot group', [
-                                                    'course_id' => $course->course_id,
-                                                    'type' => $type,
-                                                    'slots_needed' => $requiredSlots,
-                                                    'instructor_id' => $instructorId,
-                                                    'room_id' => $roomId,
-                                                    'section_id' => $sectionId,
-                                                    'stream_id' => $course->stream_id,
-                                                ]);
                                             }
                                         }
+                                    } else {
+                                        // Guest instructor assignment
+                                        foreach ($guestInstructors as $guest) {
+                                            $instructorId = null;
+                                            $guestInstructorId = $guest->id;
+                                            $instructorName = $guest->name;
 
-                                        if ($assigned) {
-                                            break;
+                                            // Prioritize preferred room, fall back to all rooms
+                                            $availableRooms = $config['preferred_room_id'] && $rooms->has($config['preferred_room_id'])
+                                                ? $rooms->only($config['preferred_room_id'])
+                                                : $rooms;
+
+                                            foreach ($availableRooms as $room) {
+                                                $roomId = $room->id;
+                                                $allSlotsAssigned = [];
+
+                                                // Try to assign all slots in one group on one day
+                                                $slotsAssigned = $this->assignConsecutiveSlots(
+                                                    $timeSlotsByDay,
+                                                    $requiredSlots,
+                                                    null,
+                                                    $roomId,
+                                                    [],
+                                                    $scheduledAssignments,
+                                                    $courseDaysUsed[$course->course_id] ?? [],
+                                                    $course->course_id,
+                                                    $sectionId,
+                                                    $course->stream_id
+                                                );
+
+                                                if ($slotsAssigned) {
+                                                    $allSlotsAssigned = $slotsAssigned;
+                                                    $dayId = $timeSlotsById[$slotsAssigned[0]]->day_id;
+                                                    Log::info('Assigned slot group for guest instructor', [
+                                                        'course_id' => $course->course_id,
+                                                        'type' => $type,
+                                                        'slots_needed' => $requiredSlots,
+                                                        'time_slot_ids' => $slotsAssigned,
+                                                        'day_id' => $dayId,
+                                                        'guest_instructor_id' => $guestInstructorId,
+                                                        'instructor_name' => $instructorName,
+                                                        'room_id' => $roomId,
+                                                        'section_id' => $sectionId,
+                                                        'stream_id' => $course->stream_id,
+                                                    ]);
+                                                    $assigned = true;
+                                                    break;
+                                                } else {
+                                                    Log::warning('Failed to assign slot group for guest instructor', [
+                                                        'course_id' => $course->course_id,
+                                                        'type' => $type,
+                                                        'slots_needed' => $requiredSlots,
+                                                        'guest_instructor_id' => $guestInstructorId,
+                                                        'instructor_name' => $instructorName,
+                                                        'room_id' => $roomId,
+                                                        'section_id' => $sectionId,
+                                                        'stream_id' => $course->stream_id,
+                                                    ]);
+                                                }
+                                            }
+
+                                            if ($assigned) {
+                                                break;
+                                            }
                                         }
                                     }
 
@@ -354,6 +429,8 @@ class SchedulingService
                                             'course_id' => $course->course_id,
                                             'stream_id' => $course->stream_id,
                                             'instructor_id' => $instructorId,
+                                            'guest_instructor_id' => $guestInstructorId,
+                                            'instructor_name' => $instructorName,
                                             'section_id' => $sectionId,
                                             'room_id' => $roomId,
                                             'type' => $type,
@@ -361,6 +438,7 @@ class SchedulingService
                                         $scheduleResult = ScheduleResult::create([
                                             'course_id' => $course->course_id,
                                             'instructor_id' => $instructorId,
+                                            'guest_instructor_id' => $guestInstructorId,
                                             'schedule_id' => $scheduleId,
                                             'section_id' => $sectionId,
                                             'room_id' => $roomId,
@@ -381,11 +459,13 @@ class SchedulingService
                                             $scheduledAssignments[] = [
                                                 'course_id' => $course->course_id,
                                                 'instructor_id' => $instructorId,
+                                                'guest_instructor_id' => $guestInstructorId,
                                                 'room_id' => $roomId,
                                                 'time_slot_id' => $timeSlotId,
                                                 'day_id' => $timeSlotsById[$timeSlotId]->day_id,
                                                 'section_id' => $sectionId,
                                                 'stream_id' => $course->stream_id,
+                                                'instructor_name' => $instructorName,
                                             ];
                                         }
                                         Log::info('Schedule result created', [
@@ -393,6 +473,8 @@ class SchedulingService
                                             'course_id' => $course->course_id,
                                             'type' => $type,
                                             'instructor_id' => $instructorId,
+                                            'guest_instructor_id' => $guestInstructorId,
+                                            'instructor_name' => $instructorName,
                                             'room_id' => $roomId,
                                             'section_id' => $sectionId,
                                             'stream_id' => $course->stream_id,
@@ -545,8 +627,8 @@ class SchedulingService
         $streamId = null,
         &$conflictingCourseId = null
     ) {
-        // Check instructor unavailability
-        if (isset($instructorUnavailability[$instructorId]) &&
+        // Skip instructor unavailability check for guest instructors (instructorId = null)
+        if ($instructorId !== null && isset($instructorUnavailability[$instructorId]) &&
             in_array($timeSlotId, $instructorUnavailability[$instructorId])) {
             Log::debug('Assignment invalid: Instructor unavailable', [
                 'instructor_id' => $instructorId,
@@ -561,11 +643,25 @@ class SchedulingService
         // Check for conflicts with other assignments
         foreach ($scheduledAssignments as $assignment) {
             if ($assignment['time_slot_id'] == $timeSlotId) {
-                // Conflict if same instructor or same room
-                if ($assignment['instructor_id'] == $instructorId || $assignment['room_id'] == $roomId) {
-                    Log::debug('Assignment invalid: Instructor or room conflict', [
+                // Conflict if same instructor (unless guest, where instructor_id is null)
+                if ($instructorId !== null && $assignment['instructor_id'] == $instructorId) {
+                    Log::debug('Assignment invalid: Instructor conflict', [
                         'time_slot_id' => $timeSlotId,
                         'instructor_id' => $instructorId,
+                        'room_id' => $roomId,
+                        'course_id' => $courseId,
+                        'section_id' => $sectionId,
+                        'stream_id' => $streamId,
+                        'existing_course_id' => $assignment['course_id'],
+                        'existing_section_id' => $assignment['section_id'],
+                        'existing_stream_id' => $assignment['stream_id'],
+                    ]);
+                    return false;
+                }
+                // Conflict if same room
+                if ($assignment['room_id'] == $roomId) {
+                    Log::debug('Assignment invalid: Room conflict', [
+                        'time_slot_id' => $timeSlotId,
                         'room_id' => $roomId,
                         'course_id' => $courseId,
                         'section_id' => $sectionId,
@@ -589,8 +685,8 @@ class SchedulingService
                     ]);
                     return false;
                 }
-                // Conflict if same instructor and different stream
-                if ($assignment['instructor_id'] == $instructorId &&
+                // Conflict if same instructor and different stream (unless guest)
+                if ($instructorId !== null && $assignment['instructor_id'] == $instructorId &&
                     $assignment['stream_id'] != $streamId &&
                     $assignment['course_id'] != $courseId) {
                     $conflictingCourseId = $assignment['course_id'];

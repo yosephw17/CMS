@@ -10,7 +10,7 @@ class ScheduleResult extends Model
     use HasFactory;
     protected $fillable=[
 
-     'instructor_id','course_id','section_id','schedule_id','room_id','stream_id',
+     'instructor_id','course_id','section_id','schedule_id','room_id','stream_id','guest_instructor_id',
       ];
          public function course()
          {
@@ -21,6 +21,10 @@ class ScheduleResult extends Model
          {
              return $this->belongsTo(Instructor::class);
          }
+         public function guestInstructor()
+{
+    return $this->belongsTo(GuestInstructor::class, 'guest_instructor_id');
+}
      
          public function section()
          {

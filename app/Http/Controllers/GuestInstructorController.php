@@ -16,7 +16,13 @@ class GuestInstructorController extends Controller
 
     }
 
+    public function show($id)
+    {
+        Log::info("message",['id',$id]);
+        $guestInstructor = GuestInstructor::findOrFail($id, ['id', 'name']);
+        return response()->json($guestInstructor);
 
+    }
     public function store(Request $request)
     {
         Log::info("message", $request->all());
