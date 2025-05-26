@@ -67,6 +67,12 @@ class PermissionSeeder extends Seeder
             'parameter-update',
             'parameter-delete',
 
+
+            'assignment-create',
+            'assignment-view',
+            'assignment-update',
+            'assignment-delete',
+
             // ProfessionalExperience permissions
             'professional-experience-create',
             'professional-experience-view',
