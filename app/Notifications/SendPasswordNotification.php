@@ -3,29 +3,23 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Models\Instructor;
-use Illuminate\Support\Collection;
+use Illuminate\Notifications\Messages\MailMessage;
 
-class MentorAssignmentNotification extends Notification implements ShouldQueue
+class SendPasswordNotification extends Notification
 {
     use Queueable;
 
-    protected $instructor;
-    protected $students;
+    protected $password;
 
     /**
      * Create a new notification instance.
      *
-     * @param Instructor $instructor
-     * @param Collection $students
+     * @param string $password
      */
-    public function __construct(Instructor $instructor, Collection $students)
+    public function __construct($password)
     {
-        $this->instructor = $instructor;
-        $this->students = $students;
+        $this->password = $password;
     }
 
     /**
@@ -46,14 +40,18 @@ class MentorAssignmentNotification extends Notification implements ShouldQueue
      * @return \Illuminate\Notifications\Messages\MailMessage
      */
     public function toMail($notifiable)
-    {
-        return (new MailMessage)
-            ->subject('List of Your Assigned Students')
-            ->markdown('emails.assigned_students', [
-                'instructor' => $this->instructor,
-                'students' => $this->students
-            ]);
-    }
+{
+    $frontendUrl = rtrim(env('FRONTEND_URL'), '/'); // Remove trailing slash if exists
+
+    return (new MailMessage)
+                ->subject('Your Account Password')
+                ->greeting('Hello ' . $notifiable->name . ',')
+                ->line('Your account has been created successfully.')
+                ->line('Your password is: **' . $this->password . '**')
+                ->line('Please change your password after logging in for security.')
+                ->action('Login Now', $frontendUrl . '/login')
+                ->line('Thank you for using our application!');
+}
 
     /**
      * Get the array representation of the notification.

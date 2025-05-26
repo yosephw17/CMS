@@ -82,7 +82,7 @@ class QualityLinkController extends Controller
                     'department_id' => $validated['department_id'] ?? null,
                 ]);
 
-                $instructorUrl = "{$frontendUrl}/#/quality-assurance-form/{$instructorLink->hash}";
+                $instructorUrl = "{$frontendUrl}/quality-assurance-form/{$instructorLink->hash}";
                 Log::info('Self-evaluation link created', [
                     'instructor_id' => $instructorId,
                     'url' => $instructorUrl,
@@ -133,7 +133,7 @@ class QualityLinkController extends Controller
                         'department_id' => $validated['department_id'] ?? null,
                     ]);
 
-                    $evaluatorUrl = "{$frontendUrl}/#/quality-assurance-form/{$evaluatorLink->hash}";
+                    $evaluatorUrl = "{$frontendUrl}/quality-assurance-form/{$evaluatorLink->hash}";
                     Log::info('Evaluator link created', [
                         'instructor_id' => $instructorId,
                         'evaluator_id' => $evaluator->id,

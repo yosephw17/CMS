@@ -53,7 +53,7 @@ class EvaluationLinkController extends Controller
             $frontendUrl = env('FRONTEND_URL');
 
             // Determine the correct form URL based on evaluator type
-            $evaluationUrl = "{$frontendUrl}/#/teacher-evaluation-form/{$link->hash}";
+            $evaluationUrl = "{$frontendUrl}/teacher-evaluation-form/{$link->hash}";
 
 
             // Send notification to evaluator's email (from Evaluator model)
