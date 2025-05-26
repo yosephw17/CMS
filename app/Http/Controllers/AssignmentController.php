@@ -19,16 +19,12 @@ class AssignmentController extends Controller
 
     public function index()
     {
-        $assignments = Assignment::with(['results.instructor', 'results.course','results.instructor.role'])->get();
+        $assignments = Assignment::with(['results.instructor', 'results.course','results.instructor.role','results.section'])->get();
         return response()->json($assignments);
 
     }
 
-    public function show($id){
-        $assignment = Assignment::with(['results.instructor', 'results.course'])->findOrFail($id);
-        return response()->json($assignment);
-
-    }
+  
     public function latest()
     
     {

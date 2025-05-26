@@ -52,6 +52,8 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\GuestInstructorController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StreamController;
+use App\Http\Controllers\LoadDistributionController;
+use App\Http\Controllers\BuildingController;
 
 
 /*
@@ -145,6 +147,7 @@ Route::get('/academic-years', [AcademicYearController::class, 'index']);
         Route::patch('/instructor-roles/{id}', [InstructorRoleController::class, 'update']); // Get all roles
         Route::get('/years', [YearController::class, 'index']);
         Route::get('/semesters', [SemesterController::class, 'index']);
+        Route::get('/semesters/{id}', [SemesterController::class, 'show']);
 
         Route::resource('year-semester-courses', YearSemesterCourseController::class);
         Route::get('/year-semester-courses-with-year-semester', [YearSemesterCourseController::class, 'findByYearAndSemester']);
@@ -164,12 +167,17 @@ Route::get('/academic-years', [AcademicYearController::class, 'index']);
     Route::apiResource('sections', SectionController::class);
     Route::apiResource('schedules', ScheduleController::class);
     Route::apiResource('guest-instructors', GuestInstructorController::class);
-
-    Route::post('/schedules/generate', [ScheduleController::class, 'generateSchedule']);
+    Route::post('/schedules/{id}/generate', [ScheduleController::class, 'generateSchedule']);
     Route::get('/schedules/{scheduleId}/results', [ScheduleController::class, 'getScheduleResults']);
     Route::get('/time_slots', [ScheduleController::class, 'getTimeSlots']);
     Route::get('/days', [ScheduleController::class, 'getDays']);
-    Route::get('/rooms', [RoomController::class, 'index']);
+Route::apiResource('rooms', RoomController::class);
     Route::patch('/year-semester-course/{id}', [YearSemesterCourseController::class, 'updatePreferredRooms']);
     Route::apiResource('streams', StreamController::class);
-});
+     Route::get('load-distributions', [LoadDistributionController::class, 'index']);
+    Route::post('load-distributions', [LoadDistributionController::class, 'create']);
+    Route::get('load-distributions/list', [LoadDistributionController::class, 'list']);
+    Route::post('load-distributions/generate', [LoadDistributionController::class, 'generate']);});
+Route::get('/load-distribution-results', [LoadDistributionController::class, 'getResults']);
+
+Route::get('/buildings', [BuildingController::class, 'index']);

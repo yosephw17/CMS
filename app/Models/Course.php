@@ -16,7 +16,8 @@ class Course extends Model
         'cp',
         'lecture_cp',
         'lab_cp',
-        'department_id'
+        'department_id',
+        'tut_cp'
     ];
     public function fields()
     {

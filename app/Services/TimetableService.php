@@ -16,7 +16,6 @@ class TimetableService
         string $lunchEnd,
         int $gapDuration = 5
     ): Collection {
-        // Validate inputs
         if ($slotDuration <= 0) {
             throw new InvalidArgumentException('Slot duration must be positive.');
         }
@@ -24,13 +23,11 @@ class TimetableService
             throw new InvalidArgumentException('Gap duration cannot be negative.');
         }
 
-        // Parse times
         $current = Carbon::parse($startTime);
         $end = Carbon::parse($endTime);
         $lunchStart = Carbon::parse($lunchStart);
         $lunchEnd = Carbon::parse($lunchEnd);
 
-        // Validate time ranges
         if ($current >= $end) {
             throw new InvalidArgumentException('Start time must be before end time.');
         }
@@ -42,16 +39,14 @@ class TimetableService
         }
 
         $slots = collect();
-        $iterationCount = 0; // For debugging infinite loops
-        $maxIterations = 10000; // Safety limit to prevent infinite loops
+        $iterationCount = 0; 
+        $maxIterations = 10000; 
 
         while ($current < $end) {
-            // Safety check for infinite loops
             if ($iterationCount++ >= $maxIterations) {
                 throw new RuntimeException('Maximum iterations exceeded. Possible infinite loop.');
             }
 
-            // Handle lunch break
             if ($current >= $lunchStart && $current < $lunchEnd) {
                 $slots->push([
                     'start_time' => $lunchStart->format('H:i'),

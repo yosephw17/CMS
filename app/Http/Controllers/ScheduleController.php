@@ -75,16 +75,16 @@ class ScheduleController extends Controller
         ]);
     }
 
-    public function generateSchedule(Request $request)
+    public function generateSchedule(Request $request, $id)
     {
-        $request->validate([
-            'schedule_id' => 'required|integer|exists:schedules,id',
-        ]);
+        // $request->validate([
+        //     'schedule_id' => 'required|integer|exists:schedules,id',
+        // ]);
 
         // Increase execution time to 300 seconds (5 minutes)
         ini_set('max_execution_time', 300);
 
-        $success = $this->schedulingService->generateSchedule($request->schedule_id);
+        $success = $this->schedulingService->generateSchedule($id);
 
         if ($success) {
             return response()->json(['message' => 'Schedule generated successfully']);

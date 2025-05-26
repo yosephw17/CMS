@@ -30,8 +30,10 @@ class InstructorController extends Controller
             'is_available' => 'required|boolean',
             'email' => 'required|email|unique:instructors,email',
             'phone' => 'nullable|string',
+            'studying' => 'nullable|string',
             'is_studying' => 'nullable|boolean',
             'is_approved' => 'nullable|boolean',
+            'is_mentor' => 'nullable|boolean',
             'role_id' => 'nullable|integer|exists:instructor_roles,id',
             'department_id' => 'nullable|integer|exists:departments,id',
             'pro_exp_ids' => 'nullable|array',
@@ -51,7 +53,9 @@ class InstructorController extends Controller
             $data = $request->all();
             $data['role_id'] = $roleId;
             $data['department_id'] = $departmentId;
-
+   if (!empty($data['studying']) && preg_match('/\b(PhD|Masters)\b/i', $data['studying'])) {
+            $data['is_studying'] = 1;
+        }
             // Remove relationship data from the main data
             unset($data['pro_exp_ids']);
             unset($data['edu_backgrounds']);
@@ -140,9 +144,11 @@ class InstructorController extends Controller
             'name' => 'required|string|max:255',
             'email' => "required|email|unique:instructors,email,{$instructor->id}",
             'phone' => 'nullable|string',
+            'studying' => 'nullable|string',
             'is_available' => 'required|boolean',
             'is_studying' => 'nullable|boolean',
             'is_approved' => 'nullable|boolean',
+            'is_mentor' => 'nullable|boolean',
             'role_id' => 'required|integer|exists:instructor_roles,id',
             'department_id' => 'required|integer|exists:departments,id',
             'pro_exp_ids' => 'nullable|array',
@@ -155,6 +161,10 @@ class InstructorController extends Controller
             'courses.*.number_of_semesters' => 'required|integer|min:0',
             'courses.*.is_recent' => 'required|boolean',
         ]);
+        if (!empty($request->studying) && preg_match('/\b(PhD|Masters)\b/i', $request->studying)) {
+    $request->merge(['is_studying' => 1]);
+}
+
 
         // Start a transaction to ensure data consistency
         return DB::transaction(function () use ($request, $instructor) {

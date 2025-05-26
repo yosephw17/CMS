@@ -12,7 +12,8 @@ class Assignment extends Model
         'year',
         'semester_id',
         'department_id',
-        'stream_id'
+        'stream_id',
+        'section_id',
 
     ];
     public function results()
@@ -23,4 +24,5 @@ class Assignment extends Model
     {
         return $this->hasMany(Choice::class,'assignment_id');
     }
+    
 }
