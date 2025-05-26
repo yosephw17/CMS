@@ -41,7 +41,7 @@ class StudentController extends Controller
             'phone_number' => 'required|string|max:20',
             'department_id' => 'required|exists:departments,id',
             'assigned_mentor_id' => 'nullable|exists:instructors,id',
-            'sex' => 'required|in:male,female,other',
+            'sex' => 'required',
             'hosting_company' => 'nullable|string|max:255',
             'location' => 'nullable|string|max:255',
         ]);

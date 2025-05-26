@@ -26,19 +26,28 @@ class RoleController extends Controller
      * Store a newly created role in storage.
      */
     public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'permissions' => 'nullable|array',
+        'permissions.*' => 'exists:permissions,id', // Validate permission IDs
+    ]);
 
-        $role = Role::create(['name' => $request->name]);
+    $role = Role::create([
+        'name' => $request->name,
+        'guard_name' => 'sanctum' // Explicitly set, though model defaults this
+    ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Role created successfully.',
-            'data' => $role,
-        ]);
+    if ($request->has('permissions')) {
+        $role->syncPermissions($request->permissions);
     }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Role created successfully.',
+        'data' => $role->load('permissions'),
+    ]);
+}
 
     /**
      * Display the specified role.
@@ -55,19 +64,28 @@ class RoleController extends Controller
      * Update the specified role in storage.
      */
     public function update(Request $request, Role $role)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'permissions' => 'nullable|array',
+        'permissions.*' => 'exists:permissions,id', // each permission ID must be valid
+    ]);
 
-        $role->update(['name' => $request->name]);
+    // Update role name
+    $role->update(['name' => $request->name]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Role updated successfully.',
-            'data' => $role,
-        ]);
+    // Sync permissions
+    if ($request->has('permissions')) {
+        $role->permissions()->sync($request->permissions);
     }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Role updated successfully.',
+        'data' => $role->load('permissions'), // include permissions in the response
+    ]);
+}
+
 
     /**
      * Remove the specified role from storage.

@@ -54,6 +54,9 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StreamController;
 use App\Http\Controllers\LoadDistributionController;
 use App\Http\Controllers\BuildingController;
+use App\Http\Controllers\QualityAssuranceEvaluatorController;
+
+
 
 
 /*
@@ -81,6 +84,7 @@ Route::prefix('quality-form')->group(function () {
 });
 Route::get('/audit-sessions', [AuditSessionController::class, 'index']);
 Route::get('/get-all-quality-responses', [QualityResponseController::class, 'getAllResponses']);
+Route::get('/get-grouped-responses', [QualityResponseController::class, 'getGroupedResponses']);
 
 Route::post('/timetable/generate', [TimetableController::class, 'generate']);
 Route::get('/time-slots', [TimetableController::class, 'fetch']);
@@ -91,7 +95,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::apiResource('courses', CourseController::class);
 Route::post('/choices/bulk', [ChoiceController::class, 'bulkStore']);
-Route::apiResource('instructors', InstructorController::class);
+Route::apiResource('instructors', InstructorController::class)->middleware('permission:instructor-list');
 Route::get('assignments/latest', [AssignmentController::class, 'latest']);
 Route::post('/request', [RequestController::class,'store']);
 Route::post('/send-message', [MentorController::class,'store']);
@@ -115,7 +119,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::resource('evaluators', EvaluatorController::class);
 
-
+    Route::get('quality-assurance-evaluators', [QualityAssuranceEvaluatorController::class,'index']);
+    Route::post('quality-assurance-evaluators', [QualityAssuranceEvaluatorController::class,'store']);
+    Route::put('/quality-assurance-evaluators/{qualityAssuranceEvaluator}', [QualityAssuranceEvaluatorController::class, 'update']);
+    Route::delete('/quality-assurance-evaluators/{qualityAssuranceEvaluator}', [QualityAssuranceEvaluatorController::class, 'destroy']);
     Route::get('/choices', [ChoiceController::class,'index']);
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('users', UserController::class);

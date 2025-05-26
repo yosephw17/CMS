@@ -12,7 +12,10 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use App\Notifications\InstructorCourseAuditNotification;
-
+use App\Notifications\EvaluatorQualityAssessmentNotification;
+use App\Models\QualityAssuranceEvaluator;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
 
 class QualityLinkController extends Controller
 {
@@ -21,7 +24,7 @@ class QualityLinkController extends Controller
      */
     public function index()
     {
-        $links = QualityLink::with(['auditSession', 'instructor', 'semester', 'academicYear'])
+        $links = QualityLink::with(['auditSession', 'instructor', 'semester', 'academicYear', 'evaluator', 'department'])
                     ->orderBy('created_at', 'desc')
                     ->get();
 
@@ -35,46 +38,138 @@ class QualityLinkController extends Controller
     {
         $validated = $request->validate([
             'audit_session_id' => 'required|exists:audit_sessions,id',
-            'instructor_ids' => 'required|array',  // Changed to accept array of instructor IDs
+            'instructor_ids' => 'required|array|min:1',
             'instructor_ids.*' => 'required|exists:instructors,id',
             'semester_id' => 'required|exists:semesters,id',
             'academic_year_id' => 'required|exists:academic_years,id',
+            'section' => 'nullable|string|max:255',
+            'department_id' => 'nullable|exists:departments,id',
+            'course_id' => 'nullable|exists:courses,id',
         ]);
 
         $createdLinks = [];
         $failedInstructors = [];
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost');
+
+        Log::info('Processing quality links', [
+            'input' => $validated,
+            'course_id' => $validated['course_id'] ?? 'null',
+            'request_all' => $request->all()
+        ]);
 
         foreach ($validated['instructor_ids'] as $instructorId) {
             try {
                 DB::beginTransaction();
 
                 $instructor = Instructor::findOrFail($instructorId);
+                Log::info('Creating self-evaluation link', [
+                    'instructor_id' => $instructorId,
+                    'instructor_name' => $instructor->name,
+                    'department_id' => $validated['department_id'] ?? 'null',
+                    'course_id' => $validated['course_id'] ?? 'null',
+                ]);
 
-                // Generate unique hash
-                $linkData = [
+                $instructorLink = QualityLink::create([
                     'audit_session_id' => $validated['audit_session_id'],
                     'instructor_id' => $instructorId,
                     'semester_id' => $validated['semester_id'],
                     'academic_year_id' => $validated['academic_year_id'],
-                    'hash' => Str::random(40),
                     'is_used' => false,
-                ];
-                $frontendUrl = env('FRONTEND_URL');
+                    'evaluator_id' => null,
+                    'courses_id' => $validated['course_id'],
+                    'is_self_evaluation' => true,
+                    'section' => $validated['section'] ?? null,
+                    'department_id' => $validated['department_id'] ?? null,
+                ]);
 
+                $instructorUrl = "{$frontendUrl}/#/quality-assurance-form/{$instructorLink->hash}";
+                Log::info('Self-evaluation link created', [
+                    'instructor_id' => $instructorId,
+                    'url' => $instructorUrl,
+                    'department_id' => $validated['department_id'] ?? 'null',
+                    'courses_id' => $instructorLink->courses_id ?? 'null',
+                ]);
 
-                $link = QualityLink::create($linkData);
-                $url = "{$frontendUrl}/#/quality-assurance-form/{$link->hash}";
+                try {
+                    $instructor->notify(new InstructorCourseAuditNotification(
+                        $instructor->name,
+                        $instructorUrl
+                    ));
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send instructor notification', [
+                        'instructor_id' => $instructorId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
-                // Send notification to instructor
-                $instructor->notify(new InstructorCourseAuditNotification(
-                    $instructor->name,
-                    $url
-                ));
+                $evaluators = QualityAssuranceEvaluator::where([
+                    'instructor_id' => $instructorId,
+                    'semester_id' => $validated['semester_id'],
+                    'academic_year_id' => $validated['academic_year_id'],
+                    'audit_session_id' => $validated['audit_session_id'],
+                ])->get();
+
+                if ($evaluators->isEmpty()) {
+                    Log::warning('No evaluators found', [
+                        'instructor_id' => $instructorId,
+                        'department_id' => $validated['department_id'] ?? 'null',
+                        'course_id' => $validated['course_id'] ?? 'null',
+                    ]);
+                }
+
+                $evaluatorLinks = [];
+
+                foreach ($evaluators as $evaluator) {
+                    $evaluatorLink = QualityLink::create([
+                        'audit_session_id' => $validated['audit_session_id'],
+                        'instructor_id' => $instructorId,
+                        'semester_id' => $validated['semester_id'],
+                        'academic_year_id' => $validated['academic_year_id'],
+                        'is_used' => false,
+                        'courses_id' => $validated['course_id'],
+                        'evaluator_id' => $evaluator->id,
+                        'is_self_evaluation' => false,
+                        'section' => $validated['section'] ?? null,
+                        'department_id' => $validated['department_id'] ?? null,
+                    ]);
+
+                    $evaluatorUrl = "{$frontendUrl}/#/quality-assurance-form/{$evaluatorLink->hash}";
+                    Log::info('Evaluator link created', [
+                        'instructor_id' => $instructorId,
+                        'evaluator_id' => $evaluator->id,
+                        'url' => $evaluatorUrl,
+                    ]);
+
+                    $evaluatorLinks[] = [
+                        'evaluator_id' => $evaluator->id,
+                        'name' => $evaluator->name,
+                        'email' => $evaluator->email,
+                        'url' => $evaluatorUrl,
+                    ];
+
+                    try {
+                        Notification::route('mail', $evaluator->email)
+                            ->notify(new EvaluatorQualityAssessmentNotification(
+                                $evaluator->name,
+                                $instructor->name,
+                                $evaluatorUrl
+                            ));
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to send evaluator notification', [
+                            'evaluator_id' => $evaluator->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
 
                 $createdLinks[] = [
                     'instructor_id' => $instructorId,
-                    'link' => $link,
-                    'url' => $url,
+                    'instructor_name' => $instructor->name,
+                    'self_evaluation_url' => $instructorUrl,
+                    'evaluators' => $evaluatorLinks,
+                    'section' => $validated['section'] ?? null,
+                    'department_id' => $validated['department_id'] ?? null,
+                    'course_id' => $validated['course_id'] ?? null,
                 ];
 
                 DB::commit();
@@ -82,20 +177,24 @@ class QualityLinkController extends Controller
                 DB::rollBack();
                 $failedInstructors[] = [
                     'instructor_id' => $instructorId,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ];
-                \Log::error("Failed to create quality link for instructor {$instructorId}: " . $e->getMessage());
+                Log::error('Failed to process instructor', [
+                    'instructor_id' => $instructorId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
         return response()->json([
-            'message' => 'Quality links processed',
-            'data' => [
-                'successful_creations' => $createdLinks,
-                'failed_creations' => $failedInstructors,
-            ]
-        ], 201);
+            'success' => empty($failedInstructors),
+            'message' => empty($failedInstructors) ? 'All links created successfully' : 'Some links failed to create',
+            'data' => $createdLinks,
+            'errors' => $failedInstructors,
+        ], empty($failedInstructors) ? 201 : 207);
     }
+
+
     /**
      * Display the specified quality link
      */
