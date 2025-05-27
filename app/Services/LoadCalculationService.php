@@ -24,7 +24,7 @@ class LoadCalculationService
             if ($studentsCount > 50) {
                 $elh *= 1.1;
             }
-        } elseif ($data['assignment_type'] === 'lab') {
+        } elseif ($data['assig~nment_type'] === 'lab') {
             $elh += ($labHours * $labSections) * (2/3);
         } elseif ($data['assignment_type'] === 'lab_assistant') {
             $elh += 1 ;
