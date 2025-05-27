@@ -16,6 +16,16 @@ class PermissionSeeder extends Seeder
             'building-view',
             'building-update',
             'building-delete',
+            'building-management',
+
+
+            'room-create',
+            'room-view',
+            'room-update',
+            'room-delete',
+
+
+
 
             // Choice permissions
             'choice-view',
@@ -37,6 +47,7 @@ class PermissionSeeder extends Seeder
             'efficiency-view',
             'efficiency-update',
             'efficiency-delete',
+            'efficiency-report',
 
             // Field permissions
             'field-create',
@@ -73,6 +84,7 @@ class PermissionSeeder extends Seeder
             'assignment-view',
             'assignment-update',
             'assignment-delete',
+            'assignment-report',
 
             // ProfessionalExperience permissions
             'professional-experience-create',
@@ -83,8 +95,8 @@ class PermissionSeeder extends Seeder
             // QualityAssuranceEvaluator permissions
             'quality-assurance-create',
             'quality-assurance-view',
-            'quality-assurance-update',
-            'quality-assurance-delete',
+            'quality-assurance-report',
+
 
             // Research permissions
             'research-create',
@@ -141,6 +153,33 @@ class PermissionSeeder extends Seeder
             'year-semester-course-view',
             'year-semester-course-update',
             'year-semester-course-delete',
+
+
+            'dashboard-view',
+
+
+
+            'load-create',
+            'load-view',
+            'load-update',
+            'load-delete',
+            'load-export',
+
+
+            'choice-view',
+
+
+            'program-view',
+            'program-create',
+            'program-update',
+            'program-delete',
+
+
+
+            'filed-create',
+            'filed-view',
+            'filed-update',
+            'filed-delete',
         ];
 
         // Seed the permissions
