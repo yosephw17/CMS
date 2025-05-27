@@ -40,6 +40,11 @@ class AssignmentController extends Controller
         return response()->json($latestAssignment);
     }
 
+    public function show($id){
+        $assignment = Assignment::with(['results.instructor', 'results.course'])->findOrFail($id);
+        return response()->json($assignment);
+
+    }
     public function store(Request $request)
     {
         $request->validate([
