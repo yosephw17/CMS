@@ -14,18 +14,18 @@
             public function up()
             {
                 Schema::create('courses', function (Blueprint $table) {
-                    $table->id(); 
-                    $table->string('name'); 
+                    $table->id();
+                    $table->string('name');
                     $table->string('course_code')->unique();
-                    $table->integer('cp'); 
-                    $table->integer('lecture_cp')->default(0); 
-                    $table->integer('lab_cp')->default(0); 
+                    $table->integer('cp');
+                    $table->integer('lecture_cp')->default(0);
+                    $table->integer('lab_cp')->default(0);
                     $table->foreignId('department_id')->nullable()->constrained()->nullOnDelete();
                     $table->unsignedBigInteger('preferred_lecture_room_id')->nullable();
                     $table->unsignedBigInteger('preferred_lab_room_id')->nullable();
 
 
-                    $table->timestamps(); 
+                    $table->timestamps();
 
                     $table->foreign('preferred_lecture_room_id')->references('id')->on('rooms')->onDelete('set null');
                     $table->foreign('preferred_lab_room_id')->references('id')->on('rooms')->onDelete('set null');
